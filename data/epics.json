@@ -2,30 +2,56 @@
   "stagingBaseUrl": "https://boltfood--staging.sandbox.lightning.force.com",
   "epics": [
     {
-      "id": "cebf-2159",
-      "jiraKey": "CEBF-2159",
-      "jiraUrl": "https://taxify.atlassian.net/browse/CEBF-2159",
-      "name": "Churn context on Lead & Opportunity",
-      "summary": "Surface churn context (date, reason, sub-reason, AM commentary) as a visual read-only section on reactivation Lead and Opportunity. All testers complete the same missions independently in Staging; record Pass/Fail here.",
+      "id": "cebf-2152",
+      "jiraKey": "CEBF-2152",
+      "jiraUrl": "https://taxify.atlassian.net/browse/CEBF-2152",
+      "name": "Reactivation V2 — Sales UAT",
+      "summary": "Focused UAT for Reactivation V2. Same 6 missions for every tester. Hands-on in Staging; record Pass/Fail here. Prefer different records per tester so you don't collide.",
       "targetOrg": "Staging",
       "status": "Open",
       "testerPlan": {
         "howMany": 3,
-        "note": "All 3 testers run the same mission list. Each person sets their own Tester name, uses their own browser (results do not overwrite), and preferably different Staging records so they don't collide. When done, each Exports results JSON to the coordinator."
+        "note": "All testers run missions 1–6. Set your Tester name before saving. Export JSON when done and send to the coordinator. ~60–90 minutes."
       },
       "missions": [
         {
-          "id": "2159-1-lead-visible",
-          "name": "Lead shows churn section when context exists",
-          "goal": "On a reactivation Lead that has churn context, the Churn Context section is visible and filled.",
+          "id": "2152-1-manual-lead",
+          "name": "1. Reactivate one archived location → Lead",
+          "goal": "From an archived Account, create a prefilled reactivation Lead that looks correct for Sales.",
           "role": "Sales",
-          "doneWhen": "You see a clear section (not buried in fields) with churn date, reason, sub-reason (if any), and AM commentary.",
+          "doneWhen": "A reactivation Lead exists, linked to the Account, with expected prefilled fields; Account stays archived.",
           "steps": [
             "Log in to Staging as a Sales user (or Login As).",
-            "Open a reactivation Lead that has churn context populated.",
-            "Confirm a dedicated Churn Context section appears on the Lead page.",
-            "Confirm it shows: churn date, churn reason, sub-reason (when populated), AM commentary.",
-            "Paste the Lead URL in Evidence URL."
+            "Open an archived (deleted) merchant Account in your country.",
+            "Use the Reactivate action to create a reactivation Lead.",
+            "Confirm LeadSource = Reactivation and Source Account is set.",
+            "Confirm key merchant fields are prefilled and usable.",
+            "Paste Lead URL in Evidence URL."
+          ],
+          "estimatedMinutes": 15,
+          "recordLinks": [
+            {
+              "label": "Open Staging",
+              "url": "https://boltfood--staging.sandbox.lightning.force.com"
+            },
+            {
+              "label": "Jira CEBF-2153",
+              "url": "https://taxify.atlassian.net/browse/CEBF-2153"
+            }
+          ]
+        },
+        {
+          "id": "2152-2-churn-context",
+          "name": "2. Churn context visible on Lead (and Opp if available)",
+          "goal": "See churn date, reason, sub-reason, and AM commentary as a clear read-only section — not buried in fields.",
+          "role": "Sales",
+          "doneWhen": "Churn Context section is visible when context exists; hidden when empty; read-only.",
+          "steps": [
+            "Open a reactivation Lead that should have churn context.",
+            "Confirm the Churn Context section shows date, reason, sub-reason (if any), commentary.",
+            "Confirm you cannot edit it.",
+            "If Lead→Opp conversion is available in Staging, confirm the section also appears on the Opp.",
+            "Paste record URL(s) in Evidence URL."
           ],
           "estimatedMinutes": 15,
           "recordLinks": [
@@ -40,130 +66,102 @@
           ]
         },
         {
-          "id": "2159-2-hidden-when-empty",
-          "name": "Section hidden when there is no churn context",
-          "goal": "When there is no churn context, the section is fully hidden — no empty card or placeholder.",
+          "id": "2152-3-latest-asset",
+          "name": "3. Latest asset visible on Lead/Opp",
+          "goal": "See the merchant's latest asset so Sales does not ship duplicate hardware.",
           "role": "Sales",
-          "doneWhen": "No Churn Context section appears on a reactivation Lead/Opp with missing churn context.",
+          "doneWhen": "Latest asset info is visible on the reactivation Lead (and Opp if converted).",
           "steps": [
-            "Open a reactivation Lead (or Opp) with no churn context.",
-            "Confirm the Churn Context section is fully hidden — not an empty card.",
-            "Paste the record URL in Evidence URL."
+            "Open a reactivation Lead for a merchant that has assets in Staging.",
+            "Confirm latest asset information is shown on the page.",
+            "If an Opp exists from conversion, confirm the same visibility there.",
+            "Paste record URL in Evidence URL."
           ],
           "estimatedMinutes": 10,
           "recordLinks": [
             {
               "label": "Open Staging",
               "url": "https://boltfood--staging.sandbox.lightning.force.com"
-            }
-          ]
-        },
-        {
-          "id": "2159-3-readonly",
-          "name": "Churn section is read-only",
-          "goal": "Sales / AM / Sales Manager cannot edit churn context from the section.",
-          "role": "Sales",
-          "doneWhen": "No edit/save controls on the churn section; values match the source churn data.",
-          "steps": [
-            "On a Lead or Opp that shows Churn Context, try to edit fields in the section.",
-            "Confirm there is no edit/save path.",
-            "Optionally Login As AM or Sales Manager and confirm the same read-only behaviour."
-          ],
-          "estimatedMinutes": 10,
-          "recordLinks": [
+            },
             {
-              "label": "Open Staging",
-              "url": "https://boltfood--staging.sandbox.lightning.force.com"
+              "label": "Jira CEBF-2171",
+              "url": "https://taxify.atlassian.net/browse/CEBF-2171"
             }
           ]
         },
         {
-          "id": "2159-4-opp-after-convert",
-          "name": "Converted Opportunity keeps churn section",
-          "goal": "After Lead → Opportunity conversion, the reactivation Opportunity shows the same churn context section.",
+          "id": "2152-4-brand-bulk",
+          "name": "4. Brand bulk reactivation",
+          "goal": "From Brand health, reactivate multiple eligible locations and skip ones already in flight.",
           "role": "Sales",
-          "doneWhen": "Converted reactivation Opp shows churn date, reason, sub-reason, commentary; values match what was on the Lead.",
+          "doneWhen": "Selected locations get reactivation Leads; already-in-flight rows are not selectable / not duplicated.",
           "steps": [
-            "Start from a reactivation Lead that HAS churn context.",
-            "Convert to a reactivation Opportunity.",
-            "Open the Opportunity and confirm the Churn Context section is visible with the same snapshot fields.",
-            "Paste Opp URL in Evidence URL."
+            "Open a Brand with several archived locations in Staging.",
+            "Use Brand-level Reactivate / reactivation UI.",
+            "Select multiple eligible locations and submit.",
+            "Confirm new Leads were created for selected locations.",
+            "Confirm locations that already have an open reactivation Lead are skipped / not duplicated.",
+            "Paste Brand + sample Lead URLs in Evidence URL."
           ],
           "estimatedMinutes": 20,
           "recordLinks": [
             {
               "label": "Open Staging",
               "url": "https://boltfood--staging.sandbox.lightning.force.com"
+            },
+            {
+              "label": "Jira CEBF-2165",
+              "url": "https://taxify.atlassian.net/browse/CEBF-2165"
             }
           ]
         },
         {
-          "id": "2159-5-parent-table",
-          "name": "Parent Brand/Group Opp aggregates child churn",
-          "goal": "On a parent-level reactivation Opportunity, churn context is a table: one row per child location.",
+          "id": "2152-5-group-bulk",
+          "name": "5. Group bulk reactivation",
+          "goal": "From Group health, reactivate across the Group the same way as Brand.",
           "role": "Sales",
-          "doneWhen": "You see location, churn date, reason, sub-reason, commentary excerpt per child.",
+          "doneWhen": "Group-level reactivation creates Leads for selected eligible locations and respects already-in-flight.",
           "steps": [
-            "Open a Brand- or Group-level reactivation Opportunity with multiple child locations that have churn context.",
-            "Confirm the section is tabular (not a single location's fields only).",
-            "Confirm columns cover location/account, date, reason, sub-reason, commentary.",
-            "Paste Opp URL in Evidence URL."
+            "Open a Group with archived locations in Staging.",
+            "Use Group-level Reactivate / reactivation UI.",
+            "Select eligible locations and submit.",
+            "Confirm Leads created and no duplicates for already-in-flight locations.",
+            "Paste Group + sample Lead URLs in Evidence URL."
           ],
           "estimatedMinutes": 20,
           "recordLinks": [
             {
               "label": "Open Staging",
               "url": "https://boltfood--staging.sandbox.lightning.force.com"
+            },
+            {
+              "label": "Jira CEBF-2166",
+              "url": "https://taxify.atlassian.net/browse/CEBF-2166"
             }
           ]
         },
         {
-          "id": "2159-6-out-of-scope",
-          "name": "Non-reactivation Opp does not show the section",
-          "goal": "Churn Context section is not surfaced on ordinary (non-reactivation) Opportunities.",
-          "role": "Sales",
-          "doneWhen": "A normal non-reactivation Opp page has no Churn Context section from this story.",
+          "id": "2152-6-opp-cleanup",
+          "name": "6. Warn, then auto-close untouched reactivation Opp",
+          "goal": "Inactive reactivation Opportunities get a warning, then auto-close as Lost with the right loss reason — never if Won.",
+          "role": "Sales / AM",
+          "doneWhen": "You can point to a warning case and an auto-closed Lost case; a Won Opp is not auto-closed.",
           "steps": [
-            "Open a non-reactivation Opportunity in Staging.",
-            "Confirm the CEBF-2159 Churn Context section is not present.",
-            "Paste Opp URL in Evidence URL."
-          ],
-          "estimatedMinutes": 5,
-          "recordLinks": [
-            {
-              "label": "Open Staging",
-              "url": "https://boltfood--staging.sandbox.lightning.force.com"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "cebf-2152",
-      "jiraKey": "CEBF-2152",
-      "jiraUrl": "https://taxify.atlassian.net/browse/CEBF-2152",
-      "name": "Reactivation V2",
-      "summary": "Epic-level sample trail (kept for reference). Prefer CEBF-2159 for the 3-tester dry run.",
-      "targetOrg": "Staging",
-      "status": "Open",
-      "missions": [
-        {
-          "id": "m1-eligible-leads",
-          "name": "Confirm eligible merchants get reactivation leads",
-          "goal": "Verify Romania archived merchants get a reactivation Lead after the daily run.",
-          "role": "Business",
-          "doneWhen": "You can point to at least one new Reactivation Lead for an eligible Romania merchant.",
-          "steps": [
-            "Confirm Romania CMDT is enabled (90 days).",
-            "Pick an eligible archived merchant in Staging.",
-            "Trigger or wait for the daily orchestrator.",
-            "Confirm the Lead exists and links correctly."
+            "Use prepared Staging Opps (or ask coordinator for test Opps) past warning / auto-close thresholds.",
+            "Confirm warning notification for the warning-threshold Opp.",
+            "Confirm auto-close Lost with loss reason like 'Reactivation not done in time' for the close-threshold Opp.",
+            "Confirm a Won reactivation Opp is left alone.",
+            "Paste Opp URLs in Evidence URL."
           ],
           "estimatedMinutes": 20,
           "recordLinks": [
             {
               "label": "Open Staging",
               "url": "https://boltfood--staging.sandbox.lightning.force.com"
+            },
+            {
+              "label": "Jira CEBF-2168",
+              "url": "https://taxify.atlassian.net/browse/CEBF-2168"
             }
           ]
         }
