@@ -209,40 +209,50 @@ function renderDetail() {
           .map((m) => {
             const outcome = missionStatus(epic.id, m.id);
             const badge = statusBadge(outcome);
-            const selected = m.id === state.selectedMissionId ? 'selected' : '';
+            const selected = m.id === state.selectedMissionId;
+            const expanded = selected ? 'expanded' : '';
             return `
-              <div class="mission-card ${selected}">
-                <button class="mission-card-main" data-mission="${m.id}" type="button">
+              <div class="mission-card ${selected ? 'selected' : ''} ${expanded}" id="mission-${escapeAttr(m.id)}">
+                <button class="mission-card-main" data-mission="${m.id}" type="button" aria-expanded="${selected}">
                   <div class="mission-card-top">
                     <strong>${escapeHtml(m.name)}</strong>
                     <span class="badge ${badge.className}">${escapeHtml(badge.label)}</span>
                   </div>
-                  <div class="meta">${escapeHtml(m.role)} · ~${m.estimatedMinutes} min</div>
+                  <div class="meta">${escapeHtml(m.role)} · ~${m.estimatedMinutes} min · ${selected ? 'click to collapse' : 'click to expand'}</div>
                 </button>
                 <div class="mission-quick">
                   <button class="btn btn-sm btn-progress" type="button" data-quick="In Progress" data-mission-quick="${m.id}">In progress</button>
                   <button class="btn btn-sm btn-pass" type="button" data-quick="Pass" data-mission-quick="${m.id}">Pass</button>
                   <button class="btn btn-sm btn-fail" type="button" data-quick="Fail" data-mission-quick="${m.id}">Fail</button>
                 </div>
+                ${selected ? renderMission(epic, m) : ''}
               </div>
             `;
           })
           .join('')}
       </div>
     </div>
-
-    ${mission ? renderMission(epic, mission) : `<div class="empty" style="margin-top:1rem">Pick a mission — or use quick Pass/Fail on a row.</div>`}
   `;
 
   els.epicDetail.querySelectorAll('[data-mission]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      state.selectedMissionId = btn.dataset.mission;
-      // auto mark in progress when opening a pending mission
-      const current = missionStatus(epic.id, btn.dataset.mission);
+      const missionId = btn.dataset.mission;
+      // toggle: click again collapses
+      if (state.selectedMissionId === missionId) {
+        state.selectedMissionId = null;
+        render();
+        return;
+      }
+      state.selectedMissionId = missionId;
+      const current = missionStatus(epic.id, missionId);
       if (current === 'Pending') {
-        quickSetOutcome(epic.id, btn.dataset.mission, 'In Progress', false);
+        quickSetOutcome(epic.id, missionId, 'In Progress', false);
       }
       render();
+      document.getElementById(`mission-${missionId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
     });
   });
 
