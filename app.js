@@ -1,11 +1,13 @@
 const STORAGE_KEY = 'uat-trail-results-v1';
 const TESTER_KEY = 'uat-trail-tester-v1';
+const CHECKLIST_KEY = 'uat-trail-checklist-v1';
 
 const state = {
   catalog: null,
   selectedEpicId: null,
   selectedMissionId: null,
   results: loadResults(),
+  checklists: loadChecklists(),
 };
 
 const els = {
@@ -44,8 +46,20 @@ function loadResults() {
   }
 }
 
+function loadChecklists() {
+  try {
+    return JSON.parse(localStorage.getItem(CHECKLIST_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
 function saveResults() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.results));
+}
+
+function saveChecklists() {
+  localStorage.setItem(CHECKLIST_KEY, JSON.stringify(state.checklists));
 }
 
 function resultKey(epicId, missionId) {
@@ -65,17 +79,61 @@ function selectedMission() {
   return selectedEpic()?.missions.find((m) => m.id === state.selectedMissionId);
 }
 
+function missionStatus(epicId, missionId) {
+  return getResult(epicId, missionId)?.outcome || 'Pending';
+}
+
 function epicProgress(epic) {
   let passed = 0;
   let failed = 0;
+  let inProgress = 0;
   let pending = 0;
   for (const mission of epic.missions) {
-    const outcome = getResult(epic.id, mission.id)?.outcome;
+    const outcome = missionStatus(epic.id, mission.id);
     if (outcome === 'Pass') passed += 1;
     else if (outcome === 'Fail') failed += 1;
+    else if (outcome === 'In Progress') inProgress += 1;
     else pending += 1;
   }
-  return { passed, failed, pending, total: epic.missions.length };
+  return { passed, failed, inProgress, pending, total: epic.missions.length };
+}
+
+function statusBadge(outcome) {
+  if (outcome === 'Pass') return { label: 'Pass', className: 'badge-pass' };
+  if (outcome === 'Fail') return { label: 'Fail', className: 'badge-fail' };
+  if (outcome === 'In Progress') return { label: 'In progress', className: 'badge-progress' };
+  return { label: 'Pending', className: 'badge-pending' };
+}
+
+function renderSegBar(progress) {
+  const { passed, failed, inProgress, pending, total } = progress;
+  if (!total) return '';
+  const pct = (n) => `${(n / total) * 100}%`;
+  return `
+    <div class="seg-bar" aria-hidden="true">
+      ${passed ? `<span class="seg-pass" style="width:${pct(passed)}"></span>` : ''}
+      ${failed ? `<span class="seg-fail" style="width:${pct(failed)}"></span>` : ''}
+      ${inProgress ? `<span class="seg-progress" style="width:${pct(inProgress)}"></span>` : ''}
+      ${pending ? `<span class="seg-pending" style="width:${pct(pending)}"></span>` : ''}
+    </div>
+    <div class="seg-legend">
+      <span><i style="background:var(--pass)"></i>${passed} pass</span>
+      <span><i style="background:var(--fail)"></i>${failed} fail</span>
+      <span><i style="background:var(--warn-soft)"></i>${inProgress} active</span>
+      <span><i style="background:rgba(107,101,88,0.35)"></i>${pending} pending</span>
+    </div>
+  `;
+}
+
+function doneWhenItems(doneWhen) {
+  const text = String(doneWhen || '').trim();
+  if (!text) return [];
+  const parts = text
+    .split(/\s*(?:;|\n|·)\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length > 1) return parts;
+  return [text];
 }
 
 function render() {
@@ -92,7 +150,8 @@ function renderEpics() {
       return `
         <button class="epic-card ${selected}" data-epic="${epic.id}" type="button">
           <strong>${escapeHtml(epic.jiraKey)} · ${escapeHtml(epic.name)}</strong>
-          <div class="meta">${p.passed}/${p.total} passed · ${escapeHtml(epic.targetOrg)}</div>
+          ${renderSegBar(p)}
+          <div class="meta" style="margin-top:0.35rem">${escapeHtml(epic.targetOrg)}</div>
         </button>
       `;
     })
@@ -138,7 +197,7 @@ function renderDetail() {
           · hands-on in ${escapeHtml(epic.targetOrg)}
         </p>
       </div>
-      <div class="progress">${progress.passed} passed · ${progress.failed} failed · ${progress.pending} pending</div>
+      <div class="progress-block">${renderSegBar(progress)}</div>
     </div>
     <p class="goal">${escapeHtml(epic.summary)}</p>
     ${renderTesterPlan(epic)}
@@ -148,49 +207,100 @@ function renderDetail() {
       <div class="mission-list">
         ${epic.missions
           .map((m) => {
-            const outcome = getResult(epic.id, m.id)?.outcome || 'Pending';
-            const badge =
-              outcome === 'Pass'
-                ? 'badge-pass'
-                : outcome === 'Fail'
-                  ? 'badge-fail'
-                  : 'badge-pending';
+            const outcome = missionStatus(epic.id, m.id);
+            const badge = statusBadge(outcome);
             const selected = m.id === state.selectedMissionId ? 'selected' : '';
             return `
-              <button class="mission-card ${selected}" data-mission="${m.id}" type="button">
-                <div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:flex-start">
-                  <strong>${escapeHtml(m.name)}</strong>
-                  <span class="badge ${badge}">${escapeHtml(outcome)}</span>
+              <div class="mission-card ${selected}">
+                <button class="mission-card-main" data-mission="${m.id}" type="button">
+                  <div class="mission-card-top">
+                    <strong>${escapeHtml(m.name)}</strong>
+                    <span class="badge ${badge.className}">${escapeHtml(badge.label)}</span>
+                  </div>
+                  <div class="meta">${escapeHtml(m.role)} · ~${m.estimatedMinutes} min</div>
+                </button>
+                <div class="mission-quick">
+                  <button class="btn btn-sm btn-progress" type="button" data-quick="In Progress" data-mission-quick="${m.id}">In progress</button>
+                  <button class="btn btn-sm btn-pass" type="button" data-quick="Pass" data-mission-quick="${m.id}">Pass</button>
+                  <button class="btn btn-sm btn-fail" type="button" data-quick="Fail" data-mission-quick="${m.id}">Fail</button>
                 </div>
-                <div class="meta">${escapeHtml(m.role)} · ~${m.estimatedMinutes} min</div>
-              </button>
+              </div>
             `;
           })
           .join('')}
       </div>
     </div>
 
-    ${mission ? renderMission(epic, mission) : `<div class="empty" style="margin-top:1rem">Pick a mission.</div>`}
+    ${mission ? renderMission(epic, mission) : `<div class="empty" style="margin-top:1rem">Pick a mission — or use quick Pass/Fail on a row.</div>`}
   `;
 
   els.epicDetail.querySelectorAll('[data-mission]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.selectedMissionId = btn.dataset.mission;
+      // auto mark in progress when opening a pending mission
+      const current = missionStatus(epic.id, btn.dataset.mission);
+      if (current === 'Pending') {
+        quickSetOutcome(epic.id, btn.dataset.mission, 'In Progress', false);
+      }
       render();
     });
   });
+
+  els.epicDetail.querySelectorAll('[data-mission-quick]').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const missionId = btn.dataset.missionQuick;
+      const outcome = btn.dataset.quick;
+      state.selectedMissionId = missionId;
+      quickSetOutcome(epic.id, missionId, outcome, true);
+    });
+  });
+
+  wireMissionForm(epic, mission);
+}
+
+function wireMissionForm(epic, mission) {
+  if (!mission) return;
 
   const form = els.epicDetail.querySelector('#resultForm');
   if (form) {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      submitResult(epic.id, mission.id, new FormData(form));
+      const outcomeBtn = els.epicDetail.querySelector('.outcome-toggle [aria-pressed="true"]');
+      const outcome = outcomeBtn?.dataset.outcome || 'Pass';
+      const fd = new FormData(form);
+      fd.set('outcome', outcome);
+      submitResult(epic.id, mission.id, fd);
     });
   }
+
+  els.epicDetail.querySelectorAll('.outcome-toggle button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      els.epicDetail.querySelectorAll('.outcome-toggle button').forEach((b) => {
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.setAttribute('aria-pressed', 'true');
+    });
+  });
+
+  els.epicDetail.querySelectorAll('[data-done-check]').forEach((input) => {
+    input.addEventListener('change', () => {
+      const key = resultKey(epic.id, mission.id);
+      const list = state.checklists[key] || {};
+      list[input.dataset.doneCheck] = input.checked;
+      state.checklists[key] = list;
+      saveChecklists();
+    });
+  });
 }
 
 function renderMission(epic, mission) {
   const existing = getResult(epic.id, mission.id) || {};
+  const outcome = existing.outcome || 'In Progress';
+  const checklistKey = resultKey(epic.id, mission.id);
+  const checks = state.checklists[checklistKey] || {};
+  const doneItems = doneWhenItems(mission.doneWhen);
+
   const links = (mission.recordLinks || [])
     .map(
       (link) =>
@@ -199,56 +309,94 @@ function renderMission(epic, mission) {
     .join('');
 
   return `
-    <section class="mission-detail" style="margin-top:1.25rem">
-      <div>
-        <p class="section-label">Goal</p>
-        <p class="goal">${escapeHtml(mission.goal)}</p>
-      </div>
-      <div>
-        <p class="section-label">Done when</p>
-        <p class="meta">${escapeHtml(mission.doneWhen)}</p>
-      </div>
-      <div>
-        <p class="section-label">Steps</p>
-        <ol class="steps">
-          ${mission.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
-        </ol>
-      </div>
-      ${links ? `<div><p class="section-label">Open in Staging</p><div class="links">${links}</div></div>` : ''}
+    <section class="mission-detail">
+      <div class="mission-split">
+        <div class="mission-main">
+          <details class="collapse" open>
+            <summary>Goal</summary>
+            <p class="goal">${escapeHtml(mission.goal)}</p>
+          </details>
 
-      <form class="form" id="resultForm">
-        <div class="row two">
-          <label>
-            Outcome
-            <select name="outcome" required>
-              <option value="Pass" ${existing.outcome === 'Pass' ? 'selected' : ''}>Pass</option>
-              <option value="Fail" ${existing.outcome === 'Fail' ? 'selected' : ''}>Fail</option>
-            </select>
-          </label>
-          <label>
-            Feedback type
-            <select name="feedbackType">
-              <option value="None" ${!existing.feedbackType || existing.feedbackType === 'None' ? 'selected' : ''}>None</option>
-              <option value="Broken" ${existing.feedbackType === 'Broken' ? 'selected' : ''}>Broken (bug)</option>
-              <option value="Improve" ${existing.feedbackType === 'Improve' ? 'selected' : ''}>Improve (UX/process)</option>
-            </select>
-          </label>
+          <div class="done-box" style="margin-top:0.75rem">
+            <p class="section-label">Done when</p>
+            <ul class="done-list">
+              ${doneItems
+                .map(
+                  (item, index) => `
+                <li>
+                  <input type="checkbox" data-done-check="${index}" ${checks[String(index)] ? 'checked' : ''} />
+                  <span>${escapeHtml(item)}</span>
+                </li>`
+                )
+                .join('')}
+            </ul>
+          </div>
+
+          <details class="collapse steps-block" open>
+            <summary>Steps</summary>
+            <ol class="steps">
+              ${mission.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
+            </ol>
+          </details>
+
+          ${links ? `<div class="links">${links}</div>` : ''}
         </div>
-        <label>
-          Notes
-          <textarea name="notes" placeholder="What you saw, evidence, blockers…">${escapeHtml(existing.notes || '')}</textarea>
-        </label>
-        <label>
-          Evidence URL
-          <input name="evidenceUrl" type="url" placeholder="https://…" value="${escapeAttr(existing.evidenceUrl || '')}" />
-        </label>
-        <div class="form-actions">
-          <button class="btn btn-lime" type="submit">Save result</button>
-          <span class="meta">Saved in this browser · export to share</span>
-        </div>
-      </form>
+
+        <aside class="result-panel">
+          <h3>Record outcome</h3>
+          <div class="outcome-toggle" role="group" aria-label="Outcome">
+            <button type="button" class="is-progress" data-outcome="In Progress" aria-pressed="${outcome === 'In Progress'}">In progress</button>
+            <button type="button" class="is-pass" data-outcome="Pass" aria-pressed="${outcome === 'Pass'}">Pass</button>
+            <button type="button" class="is-fail" data-outcome="Fail" aria-pressed="${outcome === 'Fail'}">Fail</button>
+          </div>
+          <form class="form" id="resultForm">
+            <label>
+              Feedback type
+              <select name="feedbackType">
+                <option value="None" ${!existing.feedbackType || existing.feedbackType === 'None' ? 'selected' : ''}>None</option>
+                <option value="Broken" ${existing.feedbackType === 'Broken' ? 'selected' : ''}>Broken (bug)</option>
+                <option value="Improve" ${existing.feedbackType === 'Improve' ? 'selected' : ''}>Improve (UX/process)</option>
+              </select>
+            </label>
+            <label>
+              Notes
+              <textarea name="notes" placeholder="What you saw, evidence, blockers…">${escapeHtml(existing.notes || '')}</textarea>
+            </label>
+            <label>
+              Evidence URL
+              <input name="evidenceUrl" type="url" placeholder="https://…" value="${escapeAttr(existing.evidenceUrl || '')}" />
+            </label>
+            <div class="form-actions">
+              <button class="btn btn-lime" type="submit">Save result</button>
+            </div>
+            <p class="meta">Saved in this browser · export to share</p>
+          </form>
+        </aside>
+      </div>
     </section>
   `;
+}
+
+function quickSetOutcome(epicId, missionId, outcome, toastAndRender) {
+  const tester = els.testerName.value.trim() || 'anonymous';
+  localStorage.setItem(TESTER_KEY, tester);
+  const prev = getResult(epicId, missionId) || {};
+  state.results[resultKey(epicId, missionId)] = {
+    ...prev,
+    epicId,
+    missionId,
+    tester,
+    outcome,
+    feedbackType: prev.feedbackType || 'None',
+    notes: prev.notes || '',
+    evidenceUrl: prev.evidenceUrl || '',
+    submittedAt: new Date().toISOString(),
+  };
+  saveResults();
+  if (toastAndRender) {
+    showToast(`${outcome} saved`);
+    render();
+  }
 }
 
 function submitResult(epicId, missionId, formData) {
@@ -298,7 +446,11 @@ function clearMyResults() {
       removed += 1;
     }
   }
+  for (const key of Object.keys(state.checklists)) {
+    if (key.startsWith(prefix)) delete state.checklists[key];
+  }
   saveResults();
+  saveChecklists();
   showToast(removed ? `Cleared ${removed} result(s)` : 'Nothing to clear');
   render();
 }
