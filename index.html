@@ -15,10 +15,17 @@
   <body>
     <div class="app">
       <header class="hero">
+        <img
+          class="hero-character"
+          src="./assets/uat-bug-hunter-black-net.png"
+          alt="UAT bug hunter holding a net and magnifying glass"
+          width="1448"
+          height="1086"
+        />
         <p class="brand">Bolt <span>UAT Trail</span></p>
         <p class="tagline">
-          Mission-based UAT outside Salesforce. Do the work in Staging; record
-          Pass/Fail here so history survives refreshes.
+          Take on each UAT mission in Staging. Report Pass or Fail here and keep
+          your progress on the trail.
         </p>
         <div class="toolbar">
           <label class="tester-chip">
@@ -30,10 +37,6 @@
               style="border: none; background: transparent; padding: 0; width: 8rem"
             />
           </label>
-          <span id="hunterBadge" class="hunter-badge" hidden>Bug hunter · 0</span>
-          <button class="btn btn-secondary" id="copySummaryBtn" type="button">
-            Copy summary
-          </button>
           <button class="btn btn-lime" id="submitBtn" type="button">
             Submit results
           </button>
@@ -42,17 +45,11 @@
           </button>
         </div>
         <p class="collect-hint">
-          When finished, click <strong>Submit results</strong> — your Pass/Fail notes go to
-          <strong>bophana.ros@bolt.eu</strong>. You can also <strong>Copy summary</strong> for Slack.
+          When finished, click <strong>Submit results</strong>.
         </p>
       </header>
 
       <div class="layout">
-        <aside class="panel">
-          <h2>Open epics</h2>
-          <div id="epicList" class="epic-list"></div>
-        </aside>
-
         <main class="panel">
           <div id="epicDetail" class="empty">Select an epic to start.</div>
         </main>
@@ -60,6 +57,30 @@
     </div>
 
     <canvas id="fireworks" class="fireworks" aria-hidden="true"></canvas>
+    <div id="bugCatchScene" class="bug-catch-scene" aria-hidden="true" hidden>
+      <div class="bug-catch-glow"></div>
+      <div class="bug-catch-arena">
+        <span class="bug-catch-copy">BUG CAUGHT!</span>
+        <img class="bug-runner" src="./bug.svg" width="88" height="88" alt="" />
+        <svg class="catch-net" viewBox="0 0 220 240" role="presentation">
+          <defs>
+            <clipPath id="netClip">
+              <ellipse cx="82" cy="82" rx="69" ry="62" />
+            </clipPath>
+          </defs>
+          <ellipse class="net-rim" cx="82" cy="82" rx="69" ry="62" />
+          <g class="net-mesh" clip-path="url(#netClip)">
+            <path d="M8 40h148M4 66h156M4 92h156M10 118h144" />
+            <path d="M28 14v138M55 8v148M82 6v152M109 8v148M136 16v136" />
+          </g>
+          <path class="net-handle" d="M132 126L210 226" />
+          <path class="net-grip" d="M190 202l20 24" />
+        </svg>
+        <span class="catch-spark spark-one">✦</span>
+        <span class="catch-spark spark-two">✦</span>
+        <span class="catch-spark spark-three">★</span>
+      </div>
+    </div>
     <div id="catchChip" class="catch-chip" role="status" aria-live="polite" hidden>
       <img
         class="catch-bug"
@@ -82,31 +103,24 @@
         <button type="button" class="btn btn-secondary" id="certCloseBtn">Close</button>
       </div>
       <article class="cert-sheet" aria-label="UAT certificate">
-        <p class="cert-brand">Bolt Food · UAT Trail</p>
+        <img class="cert-character" src="./assets/uat-bug-hunter-black-net.png" alt="" aria-hidden="true" />
+        <p class="cert-brand"><strong>Bolt Food</strong><span>UAT Trail</span></p>
+        <p class="cert-kicker">UAT Trailblazer</p>
         <h1 class="cert-title">Certificate of Appreciation</h1>
-        <p class="cert-intro">This certifies that</p>
+        <p class="cert-intro">Presented to</p>
         <p class="cert-name" id="certTesterName">—</p>
-        <dl class="cert-meta">
-          <div>
-            <dt>Feature / epic</dt>
-            <dd id="certFeatureName">—</dd>
-          </div>
-          <div>
-            <dt>Completion date</dt>
-            <dd id="certDate">—</dd>
-          </div>
-          <div>
-            <dt>Results</dt>
-            <dd id="certStats">—</dd>
-          </div>
-        </dl>
+        <div class="cert-feature">
+          <span>Feature</span>
+          <strong id="certFeatureName">—</strong>
+        </div>
         <p class="cert-thanks">
-          Thank you for completing user acceptance testing and helping make Bolt
-          Food better for merchants and teams.
+          In recognition of your contribution to user acceptance testing. Your time,
+          insights, and attention to detail helped validate real-world workflows and
+          shape a better product for our teams and merchants.
         </p>
         <div class="cert-foot">
-          <div class="cert-sign">UAT Coordinator<br />Bolt Food Salesforce</div>
-          <div class="cert-sign cert-sign-right" id="certFootDate"></div>
+          <div class="cert-team"><strong>Commercial Enablement Team</strong><span>Bolt Food</span></div>
+          <div class="cert-date" id="certFootDate"></div>
         </div>
       </article>
     </div>

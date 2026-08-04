@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'uat-trail-results-v1';
 const TESTER_KEY = 'uat-trail-tester-v1';
 const CHECKLIST_KEY = 'uat-trail-checklist-v1';
+const STEP_RESULTS_KEY = 'uat-trail-step-results-v1';
 
 const CATCH_LINES = [
   'You found the glitch in the matrix',
@@ -17,7 +18,8 @@ const state = {
   selectedMissionId: null,
   results: loadResults(),
   checklists: loadChecklists(),
-  pendingNotesFocus: false,
+  stepResults: loadStepResults(),
+  pendingStepNotesFocus: null,
 };
 
 const RESULTS_INBOX = 'bophana.ros@bolt.eu';
@@ -31,14 +33,12 @@ const els = {
   clearBtn: document.getElementById('clearBtn'),
   toast: document.getElementById('toast'),
   fireworks: document.getElementById('fireworks'),
+  bugCatchScene: document.getElementById('bugCatchScene'),
   catchChip: document.getElementById('catchChip'),
   catchLine: document.getElementById('catchLine'),
-  hunterBadge: document.getElementById('hunterBadge'),
   certificateModal: document.getElementById('certificateModal'),
   certTesterName: document.getElementById('certTesterName'),
   certFeatureName: document.getElementById('certFeatureName'),
-  certDate: document.getElementById('certDate'),
-  certStats: document.getElementById('certStats'),
   certFootDate: document.getElementById('certFootDate'),
   certPrintBtn: document.getElementById('certPrintBtn'),
   certCloseBtn: document.getElementById('certCloseBtn'),
@@ -50,7 +50,6 @@ els.testerName.addEventListener('change', () => {
 });
 
 els.submitBtn?.addEventListener('click', () => submitResults());
-document.getElementById('copySummaryBtn')?.addEventListener('click', copyResultsSummary);
 els.clearBtn.addEventListener('click', clearMyResults);
 els.certPrintBtn?.addEventListener('click', () => window.print());
 els.certCloseBtn?.addEventListener('click', closeCertificate);
@@ -90,12 +89,24 @@ function loadChecklists() {
   }
 }
 
+function loadStepResults() {
+  try {
+    return JSON.parse(localStorage.getItem(STEP_RESULTS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
 function saveResults() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.results));
 }
 
 function saveChecklists() {
   localStorage.setItem(CHECKLIST_KEY, JSON.stringify(state.checklists));
+}
+
+function saveStepResults() {
+  localStorage.setItem(STEP_RESULTS_KEY, JSON.stringify(state.stepResults));
 }
 
 function resultKey(epicId, missionId) {
@@ -116,7 +127,29 @@ function selectedMission() {
 }
 
 function missionStatus(epicId, missionId) {
-  return getResult(epicId, missionId)?.outcome || 'Pending';
+  const mission = state.catalog?.epics
+    .find((epic) => epic.id === epicId)
+    ?.missions.find((item) => item.id === missionId);
+  if (!mission?.steps?.length) return 'Pending';
+
+  const results = state.stepResults[resultKey(epicId, missionId)] || {};
+  const outcomes = mission.steps.map((_, index) => results[String(index)]?.outcome);
+  if (outcomes.includes('Fail')) return 'Fail';
+  if (outcomes.every((outcome) => outcome === 'Pass')) return 'Pass';
+  if (outcomes.some(Boolean)) return 'In Progress';
+  return 'Pending';
+}
+
+function missionStepProgress(epicId, mission) {
+  const results = state.stepResults[resultKey(epicId, mission.id)] || {};
+  let passed = 0;
+  let failed = 0;
+  for (let index = 0; index < mission.steps.length; index += 1) {
+    const outcome = results[String(index)]?.outcome;
+    if (outcome === 'Pass') passed += 1;
+    if (outcome === 'Fail') failed += 1;
+  }
+  return { passed, failed, answered: passed + failed, total: mission.steps.length };
 }
 
 function epicProgress(epic) {
@@ -175,14 +208,15 @@ function doneWhenItems(doneWhen) {
 function render() {
   renderEpics();
   renderDetail();
-  updateHunterBadge();
-  if (state.pendingNotesFocus) {
-    state.pendingNotesFocus = false;
-    focusNotesForHunt();
+  if (state.pendingStepNotesFocus !== null) {
+    const stepIndex = state.pendingStepNotesFocus;
+    state.pendingStepNotesFocus = null;
+    focusStepNotes(stepIndex);
   }
 }
 
 function renderEpics() {
+  if (!els.epicList) return;
   const epics = state.catalog?.epics || [];
   els.epicList.innerHTML = epics
     .map((epic) => {
@@ -207,18 +241,6 @@ function renderEpics() {
   });
 }
 
-function renderTesterPlan(epic) {
-  const plan = epic.testerPlan;
-  if (!plan) return '';
-  const count = plan.howMany ? `${plan.howMany} testers · same missions` : 'Shared missions';
-  return `
-    <div class="tester-plan">
-      <p class="section-label">${escapeHtml(count)}</p>
-      <p class="meta">${escapeHtml(plan.note)}</p>
-    </div>
-  `;
-}
-
 function renderDetail() {
   const epic = selectedEpic();
   if (!epic) {
@@ -241,7 +263,6 @@ function renderDetail() {
       <div class="progress-block">${renderSegBar(progress)}</div>
     </div>
     <p class="goal">${escapeHtml(epic.summary)}</p>
-    ${renderTesterPlan(epic)}
     ${renderFinishBanner(epic, progress)}
 
     <div style="margin-top:1.1rem">
@@ -253,20 +274,17 @@ function renderDetail() {
             const badge = statusBadge(outcome);
             const selected = m.id === state.selectedMissionId;
             const expanded = selected ? 'expanded' : '';
+            const outcomeClass =
+              outcome === 'Pass' ? 'mission-passed' : outcome === 'Fail' ? 'mission-failed' : '';
             return `
-              <div class="mission-card ${selected ? 'selected' : ''} ${expanded}" id="mission-${escapeAttr(m.id)}">
+              <div class="mission-card ${selected ? 'selected' : ''} ${expanded} ${outcomeClass}" id="mission-${escapeAttr(m.id)}">
                 <button class="mission-card-main" data-mission="${m.id}" type="button" aria-expanded="${selected}">
                   <div class="mission-card-top">
                     <strong>${escapeHtml(m.name)}</strong>
                     <span class="badge ${badge.className}">${escapeHtml(badge.label)}</span>
                   </div>
-                  <div class="meta">${escapeHtml(m.role)} · ~${m.estimatedMinutes} min · ${selected ? 'click to collapse' : 'click to expand'}</div>
+                  <div class="meta">${selected ? 'Click to collapse' : 'Click to expand'}</div>
                 </button>
-                <div class="mission-quick">
-                  <button class="btn btn-sm btn-progress" type="button" data-quick="In Progress" data-mission-quick="${m.id}">In progress</button>
-                  <button class="btn btn-sm btn-pass" type="button" data-quick="Pass" data-mission-quick="${m.id}">Pass</button>
-                  <button class="btn btn-sm btn-fail" type="button" data-quick="Fail" data-mission-quick="${m.id}">Fail</button>
-                </div>
                 ${selected ? renderMission(epic, m) : ''}
               </div>
             `;
@@ -286,25 +304,11 @@ function renderDetail() {
         return;
       }
       state.selectedMissionId = missionId;
-      const current = missionStatus(epic.id, missionId);
-      if (current === 'Pending') {
-        quickSetOutcome(epic.id, missionId, 'In Progress', false);
-      }
       render();
       document.getElementById(`mission-${missionId}`)?.scrollIntoView({
         behavior: 'smooth',
         block: 'nearest',
       });
-    });
-  });
-
-  els.epicDetail.querySelectorAll('[data-mission-quick]').forEach((btn) => {
-    btn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const missionId = btn.dataset.missionQuick;
-      const outcome = btn.dataset.quick;
-      state.selectedMissionId = missionId;
-      quickSetOutcome(epic.id, missionId, outcome, true);
     });
   });
 
@@ -314,10 +318,6 @@ function renderDetail() {
   els.epicDetail.querySelector('#finishSubmitBtn')?.addEventListener('click', () => {
     submitResults();
   });
-  els.epicDetail.querySelector('#finishCopyBtn')?.addEventListener('click', () => {
-    copyResultsSummary();
-  });
-
   wireMissionForm(epic, mission);
 }
 
@@ -333,7 +333,6 @@ function renderFinishBanner(epic, progress) {
         <p class="meta">Submit results to the coordinator, then print your certificate.</p>
       </div>
       <div class="finish-actions">
-        <button class="btn btn-secondary" type="button" id="finishCopyBtn">Copy summary</button>
         <button class="btn btn-lime" type="button" id="finishSubmitBtn">Submit results</button>
         <button class="btn btn-secondary" type="button" id="certificateBtn">Print certificate</button>
       </div>
@@ -348,22 +347,21 @@ function wireMissionForm(epic, mission) {
   if (form) {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      const outcomeBtn = els.epicDetail.querySelector('.outcome-toggle [aria-pressed="true"]');
-      const outcome = outcomeBtn?.dataset.outcome || 'Pass';
       const fd = new FormData(form);
-      fd.set('outcome', outcome);
+      fd.set('outcome', missionStatus(epic.id, mission.id));
       submitResult(epic.id, mission.id, fd);
     });
   }
 
-  els.epicDetail.querySelectorAll('.outcome-toggle button').forEach((btn) => {
+  els.epicDetail.querySelectorAll('[data-step-outcome]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      els.epicDetail.querySelectorAll('.outcome-toggle button').forEach((b) => {
-        b.setAttribute('aria-pressed', 'false');
-      });
-      btn.setAttribute('aria-pressed', 'true');
-      if (btn.dataset.outcome === 'Pass') launchFireworks();
-      if (btn.dataset.outcome === 'Fail') celebrateFail({ focusNotes: true });
+      setStepOutcome(epic, mission, Number(btn.dataset.stepIndex), btn.dataset.stepOutcome);
+    });
+  });
+
+  els.epicDetail.querySelectorAll('[data-step-note]').forEach((textarea) => {
+    textarea.addEventListener('input', () => {
+      setStepNote(epic, mission, Number(textarea.dataset.stepNote), textarea.value);
     });
   });
 
@@ -380,9 +378,12 @@ function wireMissionForm(epic, mission) {
 
 function renderMission(epic, mission) {
   const existing = getResult(epic.id, mission.id) || {};
-  const outcome = existing.outcome || 'In Progress';
+  const outcome = missionStatus(epic.id, mission.id);
+  const outcomeBadge = statusBadge(outcome);
+  const stepProgress = missionStepProgress(epic.id, mission);
   const checklistKey = resultKey(epic.id, mission.id);
   const checks = state.checklists[checklistKey] || {};
+  const stepResults = state.stepResults[checklistKey] || {};
   const doneItems = doneWhenItems(mission.doneWhen);
 
   const links = (mission.recordLinks || [])
@@ -419,7 +420,35 @@ function renderMission(epic, mission) {
           <details class="collapse steps-block" open>
             <summary>Steps</summary>
             <ol class="steps">
-              ${mission.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
+              ${mission.steps
+                .map((step, index) => {
+                  const stepResult = stepResults[String(index)] || {};
+                  const stepOutcome = stepResult.outcome || '';
+                  const stepLinks = (mission.stepLinks?.[String(index)] || [])
+                    .map(
+                      (link) =>
+                        `<a class="link-chip step-link" href="${escapeAttr(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`
+                    )
+                    .join('');
+                  return `
+                    <li class="step-item ${stepOutcome === 'Fail' ? 'has-failed' : ''}">
+                      <div class="step-copy">${escapeHtml(step)}</div>
+                      ${stepLinks ? `<div class="step-links">${stepLinks}</div>` : ''}
+                      <div class="step-actions" role="group" aria-label="Result for step ${index + 1}">
+                        <button type="button" class="step-outcome step-pass" data-step-index="${index}" data-step-outcome="Pass" aria-pressed="${stepOutcome === 'Pass'}">Pass</button>
+                        <button type="button" class="step-outcome step-fail" data-step-index="${index}" data-step-outcome="Fail" aria-pressed="${stepOutcome === 'Fail'}">Fail</button>
+                      </div>
+                      ${
+                        stepOutcome === 'Fail'
+                          ? `<label class="step-note-label">What happened?
+                              <textarea class="step-note" data-step-note="${index}" placeholder="Expected result, actual result, and anything that may help reproduce it…">${escapeHtml(stepResult.notes || '')}</textarea>
+                            </label>`
+                          : ''
+                      }
+                    </li>
+                  `;
+                })
+                .join('')}
             </ol>
           </details>
 
@@ -427,11 +456,11 @@ function renderMission(epic, mission) {
         </div>
 
         <aside class="result-panel">
-          <h3>Record outcome</h3>
-          <div class="outcome-toggle" role="group" aria-label="Outcome">
-            <button type="button" class="is-progress" data-outcome="In Progress" aria-pressed="${outcome === 'In Progress'}">In progress</button>
-            <button type="button" class="is-pass" data-outcome="Pass" aria-pressed="${outcome === 'Pass'}">Pass</button>
-            <button type="button" class="is-fail" data-outcome="Fail" aria-pressed="${outcome === 'Fail'}">Fail</button>
+          <h3>Mission summary</h3>
+          <div class="mission-status-summary">
+            <span class="badge ${outcomeBadge.className}">${escapeHtml(outcomeBadge.label)}</span>
+            <strong>${stepProgress.answered} of ${stepProgress.total} steps assessed</strong>
+            <span>${stepProgress.passed} passed · ${stepProgress.failed} failed</span>
           </div>
           <form class="form" id="resultForm">
             <label>
@@ -443,19 +472,15 @@ function renderMission(epic, mission) {
               </select>
             </label>
             <label>
-              Notes
-              <textarea name="notes" placeholder="${
+              Overall mission notes
+              <textarea class="mission-notes" name="notes" placeholder="${
                 outcome === 'Fail'
                   ? 'What did you see? Steps + expected vs actual…'
                   : 'What you saw, evidence, blockers…'
               }">${escapeHtml(existing.notes || '')}</textarea>
             </label>
-            <label>
-              Evidence URL
-              <input name="evidenceUrl" type="url" placeholder="https://…" value="${escapeAttr(existing.evidenceUrl || '')}" />
-            </label>
             <div class="form-actions">
-              <button class="btn btn-lime" type="submit">Save result</button>
+              <button class="btn btn-lime" type="submit">Save mission notes</button>
             </div>
             <p class="meta">Saved in this browser · Submit results when done</p>
           </form>
@@ -465,35 +490,76 @@ function renderMission(epic, mission) {
   `;
 }
 
-function quickSetOutcome(epicId, missionId, outcome, toastAndRender) {
+function setStepOutcome(epic, mission, stepIndex, outcome) {
+  const key = resultKey(epic.id, mission.id);
+  const results = state.stepResults[key] || {};
+  const previous = results[String(stepIndex)] || {};
+  const previousStepOutcome = previous.outcome;
+  results[String(stepIndex)] = { outcome, notes: previous.notes || '' };
+  state.stepResults[key] = results;
+  saveStepResults();
+  syncMissionResult(epic, mission);
+
+  if (outcome === 'Fail') state.pendingStepNotesFocus = stepIndex;
+  render();
+
+  if (outcome === 'Fail') {
+    celebrateFail();
+    showToast('Bug caught — add a note to this step');
+  } else {
+    showToast('Step passed — nice work!');
+    if (previousStepOutcome !== 'Pass') launchFireworks();
+  }
+}
+
+function setStepNote(epic, mission, stepIndex, notes) {
+  const key = resultKey(epic.id, mission.id);
+  const results = state.stepResults[key] || {};
+  const previous = results[String(stepIndex)] || { outcome: 'Fail' };
+  results[String(stepIndex)] = { ...previous, notes };
+  state.stepResults[key] = results;
+  saveStepResults();
+  syncMissionResult(epic, mission);
+}
+
+function syncMissionResult(epic, mission) {
   const tester = els.testerName.value.trim() || 'anonymous';
   localStorage.setItem(TESTER_KEY, tester);
-  const prev = getResult(epicId, missionId) || {};
-  state.results[resultKey(epicId, missionId)] = {
-    ...prev,
-    epicId,
-    missionId,
+  const key = resultKey(epic.id, mission.id);
+  const previous = getResult(epic.id, mission.id) || {};
+  const outcome = missionStatus(epic.id, mission.id);
+  const storedSteps = state.stepResults[key] || {};
+  let feedbackType = previous.feedbackType || 'None';
+  let autoFeedbackType = Boolean(previous.autoFeedbackType);
+  if (outcome === 'Fail' && feedbackType === 'None') {
+    feedbackType = 'Broken';
+    autoFeedbackType = true;
+  } else if (outcome !== 'Fail' && autoFeedbackType) {
+    feedbackType = 'None';
+    autoFeedbackType = false;
+  }
+  const stepResults = mission.steps.map((step, index) => ({
+    step: index + 1,
+    instruction: step,
+    outcome: storedSteps[String(index)]?.outcome || 'Pending',
+    notes: storedSteps[String(index)]?.notes || '',
+  }));
+
+  const result = { ...previous };
+  delete result.evidenceUrl;
+  state.results[key] = {
+    ...result,
+    epicId: epic.id,
+    missionId: mission.id,
     tester,
     outcome,
-    feedbackType: prev.feedbackType || 'None',
-    notes: prev.notes || '',
-    evidenceUrl: prev.evidenceUrl || '',
+    feedbackType,
+    autoFeedbackType,
+    notes: previous.notes || '',
+    stepResults,
     submittedAt: new Date().toISOString(),
   };
   saveResults();
-  if (outcome === 'Pass') launchFireworks();
-  if (outcome === 'Fail') {
-    if (!prev.feedbackType || prev.feedbackType === 'None') {
-      state.results[resultKey(epicId, missionId)].feedbackType = 'Broken';
-      saveResults();
-    }
-    state.pendingNotesFocus = true;
-    celebrateFail();
-  }
-  if (toastAndRender) {
-    showToast(outcome === 'Fail' ? 'Bug caught!' : `${outcome} saved`);
-    render();
-  }
 }
 
 function submitResult(epicId, missionId, formData) {
@@ -502,24 +568,23 @@ function submitResult(epicId, missionId, formData) {
   const outcome = formData.get('outcome');
   let feedbackType = formData.get('feedbackType') || 'None';
   if (outcome === 'Fail' && feedbackType === 'None') feedbackType = 'Broken';
+  const previous = getResult(epicId, missionId) || {};
 
+  const result = { ...previous };
+  delete result.evidenceUrl;
   state.results[resultKey(epicId, missionId)] = {
+    ...result,
     epicId,
     missionId,
     tester,
     outcome,
     feedbackType,
+    autoFeedbackType: false,
     notes: String(formData.get('notes') || '').trim(),
-    evidenceUrl: String(formData.get('evidenceUrl') || '').trim(),
     submittedAt: new Date().toISOString(),
   };
   saveResults();
-  if (outcome === 'Pass') launchFireworks();
-  if (outcome === 'Fail') {
-    state.pendingNotesFocus = true;
-    celebrateFail();
-  }
-  showToast(outcome === 'Fail' ? 'Bug caught!' : 'Result saved');
+  showToast('Mission notes saved');
   render();
 }
 
@@ -552,31 +617,16 @@ function buildResultsSummary() {
     lines.push(
       `• ${missionName}: ${r.outcome}` +
         (r.feedbackType && r.feedbackType !== 'None' ? ` [${r.feedbackType}]` : '') +
-        (r.notes ? ` — ${r.notes}` : '') +
-        (r.evidenceUrl ? ` (${r.evidenceUrl})` : '')
+        (r.notes ? ` — ${r.notes}` : '')
     );
+    for (const step of r.stepResults || []) {
+      lines.push(
+        `  Step ${step.step}: ${step.outcome}` +
+          (step.notes ? ` — ${step.notes}` : '')
+      );
+    }
   }
   return lines.join('\n');
-}
-
-function copyResultsSummary() {
-  const text = buildResultsSummary();
-  const done = () => showToast('Summary copied — paste in Slack/email');
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
-  } else {
-    fallbackCopy(text, done);
-  }
-}
-
-function fallbackCopy(text, done) {
-  const area = document.createElement('textarea');
-  area.value = text;
-  document.body.appendChild(area);
-  area.select();
-  document.execCommand('copy');
-  area.remove();
-  done();
 }
 
 function exportResults() {
@@ -648,7 +698,7 @@ async function submitResults() {
   } catch (err) {
     console.warn('Submit via FormSubmit failed, falling back to mailto', err);
     const mailto = `mailto:${RESULTS_INBOX}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-      `${summary}\n\n(Full JSON could not be auto-emailed — paste Copy summary if needed.)`
+      `${summary}\n\n(Full JSON could not be included automatically.)`
     )}`;
     window.location.href = mailto;
     showToast('Opened email draft — click Send');
@@ -676,18 +726,15 @@ function openCertificate(epic) {
     return;
   }
 
-  const progress = epicProgress(epic);
   const date = new Date().toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-  const featureName = `${epic.jiraKey} — ${epic.name}`;
+  const featureName = epic.name;
 
   els.certTesterName.textContent = tester;
   els.certFeatureName.textContent = featureName;
-  els.certDate.textContent = date;
-  els.certStats.textContent = `${progress.total} missions · ${progress.passed} passed · ${progress.failed} bugs caught`;
   els.certFootDate.textContent = date;
 
   els.certificateModal.hidden = false;
@@ -714,8 +761,12 @@ function clearMyResults() {
   for (const key of Object.keys(state.checklists)) {
     if (key.startsWith(prefix)) delete state.checklists[key];
   }
+  for (const key of Object.keys(state.stepResults)) {
+    if (key.startsWith(prefix)) delete state.stepResults[key];
+  }
   saveResults();
   saveChecklists();
+  saveStepResults();
   showToast(removed ? `Cleared ${removed} result(s)` : 'Nothing to clear');
   render();
 }
@@ -727,53 +778,37 @@ function showToast(message) {
   showToast._t = setTimeout(() => els.toast.classList.remove('show'), 1800);
 }
 
-function failCountForEpic(epicId) {
-  if (!epicId) return 0;
-  const tester = (els.testerName.value || 'anonymous').trim().toLowerCase();
-  const prefix = `${tester}::${epicId}::`;
-  let count = 0;
-  for (const [key, result] of Object.entries(state.results)) {
-    if (key.startsWith(prefix) && result.outcome === 'Fail') count += 1;
-  }
-  return count;
-}
-
-function updateHunterBadge() {
-  const badge = els.hunterBadge;
-  if (!badge) return;
-  const count = failCountForEpic(state.selectedEpicId);
-  if (!count) {
-    badge.hidden = true;
-    return;
-  }
-  badge.hidden = false;
-  badge.textContent = count === 1 ? 'Bug hunter · 1 find' : `Bug hunter · ${count} finds`;
-}
-
-function focusNotesForHunt() {
-  const notes = els.epicDetail.querySelector('textarea[name="notes"]');
+function focusStepNotes(stepIndex) {
+  const notes = els.epicDetail.querySelector(`[data-step-note="${stepIndex}"]`);
   if (!notes) return;
-  const feedback = els.epicDetail.querySelector('select[name="feedbackType"]');
-  if (feedback && feedback.value === 'None') feedback.value = 'Broken';
-  notes.placeholder = 'What did you see? Steps + expected vs actual…';
   notes.classList.add('notes-hunt');
   notes.focus();
   notes.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  clearTimeout(focusNotesForHunt._t);
-  focusNotesForHunt._t = setTimeout(() => notes.classList.remove('notes-hunt'), 2600);
+  clearTimeout(focusStepNotes._t);
+  focusStepNotes._t = setTimeout(() => notes.classList.remove('notes-hunt'), 2600);
 }
 
-function celebrateFail({ focusNotes = false } = {}) {
+function celebrateFail() {
   shakeScreen();
+  showBugCatchScene();
   launchBugBurst();
   showCatchChip();
-  updateHunterBadge();
-  requestAnimationFrame(() => {
-    els.hunterBadge?.classList.remove('pulse');
-    void els.hunterBadge?.offsetWidth;
-    els.hunterBadge?.classList.add('pulse');
-  });
-  if (focusNotes) focusNotesForHunt();
+}
+
+function showBugCatchScene() {
+  const scene = els.bugCatchScene;
+  if (!scene) return;
+
+  scene.hidden = false;
+  scene.classList.remove('play');
+  void scene.offsetWidth;
+  scene.classList.add('play');
+
+  clearTimeout(showBugCatchScene._t);
+  showBugCatchScene._t = setTimeout(() => {
+    scene.classList.remove('play');
+    scene.hidden = true;
+  }, 2400);
 }
 
 function shakeScreen() {
