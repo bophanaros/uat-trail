@@ -1346,6 +1346,13 @@ textarea.notes-hunt {
   letter-spacing: -0.03em;
 }
 
+.reward-panel .trail-token {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-width: 3px;
+  font-size: 0.84rem;
+}
+
 .reward-tier {
   display: grid;
   gap: 0.38rem;
@@ -1358,12 +1365,12 @@ textarea.notes-hunt {
 .reward-tier-medal {
   display: inline-grid;
   place-items: center;
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border-radius: 50%;
   background: var(--bolt-gray-3);
   color: var(--pending);
-  font-size: 0.85rem;
+  font-size: 1.25rem;
 }
 
 .tier-bronze .reward-tier-medal {
@@ -1439,6 +1446,19 @@ textarea.notes-hunt {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.45rem;
+}
+
+.reward-submit-btn {
+  border-color: #a8d3e3;
+  background: linear-gradient(135deg, #eaf7fc, #d9eff8);
+  color: #164b61;
+  box-shadow: 0 6px 16px rgba(22, 75, 97, 0.12);
+}
+
+.reward-submit-btn:hover {
+  border-color: #70b8d2;
+  background: linear-gradient(135deg, #f3fbfe, #d4edf7);
+  box-shadow: 0 9px 18px rgba(22, 75, 97, 0.16);
 }
 
 @media (max-width: 980px) {

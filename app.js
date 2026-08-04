@@ -262,7 +262,7 @@ function renderRewardPanel(epic) {
       ? '<button class="btn btn-secondary reward-cert-btn" type="button" disabled>Certificate locked</button>'
       : reward.tier === 'Gold'
         ? `<div class="reward-actions">
-            <button class="btn btn-lime" id="finishSubmitBtn" type="button">Submit results</button>
+            <button class="btn reward-submit-btn" id="finishSubmitBtn" type="button">Submit results</button>
             <button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">Print Gold certificate</button>
           </div>`
         : `<button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">View ${reward.tier} certificate</button>`;
