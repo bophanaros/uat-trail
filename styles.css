@@ -838,6 +838,41 @@ textarea.notes-hunt {
   color: var(--bolt-green-11);
 }
 
+.collect-hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.86rem;
+  color: var(--bolt-muted);
+  max-width: 46rem;
+  line-height: 1.45;
+}
+
+.finish-banner {
+  margin-top: 1.1rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(52, 187, 120, 0.35);
+  background:
+    linear-gradient(135deg, rgba(52, 187, 120, 0.16), transparent 55%),
+    #fff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.finish-banner strong {
+  display: block;
+  margin: 0.15rem 0 0.2rem;
+  font-size: 1.05rem;
+}
+
+.finish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .tester-plan {
   margin-top: 1rem;
   padding: 0.9rem 1rem;

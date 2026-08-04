@@ -39,6 +39,7 @@ els.testerName.addEventListener('change', () => {
 });
 
 els.exportBtn.addEventListener('click', exportResults);
+document.getElementById('copySummaryBtn')?.addEventListener('click', copyResultsSummary);
 els.clearBtn.addEventListener('click', clearMyResults);
 
 init();
@@ -220,6 +221,7 @@ function renderDetail() {
     </div>
     <p class="goal">${escapeHtml(epic.summary)}</p>
     ${renderTesterPlan(epic)}
+    ${renderFinishBanner(epic, progress)}
 
     <div style="margin-top:1.1rem">
       <p class="section-label">Missions</p>
@@ -285,7 +287,37 @@ function renderDetail() {
     });
   });
 
+  els.epicDetail.querySelector('#certificateBtn')?.addEventListener('click', () => {
+    openCertificate(epic);
+  });
+  els.epicDetail.querySelector('#finishExportBtn')?.addEventListener('click', () => {
+    exportResults();
+  });
+  els.epicDetail.querySelector('#finishCopyBtn')?.addEventListener('click', () => {
+    copyResultsSummary();
+  });
+
   wireMissionForm(epic, mission);
+}
+
+function renderFinishBanner(epic, progress) {
+  const done = progress.pending === 0 && progress.inProgress === 0 && progress.total > 0;
+  if (!done) return '';
+  const tester = els.testerName.value.trim() || 'Tester';
+  return `
+    <div class="finish-banner">
+      <div>
+        <p class="section-label">Trail complete</p>
+        <strong>${escapeHtml(tester)}, you finished ${progress.total} missions</strong>
+        <p class="meta">Send your results to the coordinator, then print your certificate.</p>
+      </div>
+      <div class="finish-actions">
+        <button class="btn btn-secondary" type="button" id="finishCopyBtn">Copy summary</button>
+        <button class="btn btn-secondary" type="button" id="finishExportBtn">Export JSON</button>
+        <button class="btn btn-lime" type="button" id="certificateBtn">Print certificate</button>
+      </div>
+    </div>
+  `;
 }
 
 function wireMissionForm(epic, mission) {
@@ -470,11 +502,68 @@ function submitResult(epicId, missionId, formData) {
   render();
 }
 
+function myResults() {
+  const tester = (els.testerName.value || 'anonymous').trim().toLowerCase();
+  const prefix = `${tester}::`;
+  return Object.values(state.results).filter((r) => {
+    const key = resultKey(r.epicId, r.missionId);
+    return key.startsWith(prefix);
+  });
+}
+
+function buildResultsSummary() {
+  const tester = els.testerName.value.trim() || 'anonymous';
+  const epic = selectedEpic();
+  const mine = myResults().filter((r) => !epic || r.epicId === epic.id);
+  const lines = [
+    `UAT Trail results — ${tester}`,
+    epic ? `Epic: ${epic.jiraKey} ${epic.name}` : 'Epic: (all)',
+    `Exported: ${new Date().toISOString()}`,
+    '',
+  ];
+  if (!mine.length) {
+    lines.push('No results yet for this tester.');
+    return lines.join('\n');
+  }
+  for (const r of mine) {
+    const missionName =
+      epic?.missions.find((m) => m.id === r.missionId)?.name || r.missionId;
+    lines.push(
+      `• ${missionName}: ${r.outcome}` +
+        (r.feedbackType && r.feedbackType !== 'None' ? ` [${r.feedbackType}]` : '') +
+        (r.notes ? ` — ${r.notes}` : '') +
+        (r.evidenceUrl ? ` (${r.evidenceUrl})` : '')
+    );
+  }
+  return lines.join('\n');
+}
+
+function copyResultsSummary() {
+  const text = buildResultsSummary();
+  const done = () => showToast('Summary copied — paste in Slack/email');
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand('copy');
+  area.remove();
+  done();
+}
+
 function exportResults() {
+  const tester = els.testerName.value.trim() || 'anonymous';
   const payload = {
     exportedAt: new Date().toISOString(),
-    tester: els.testerName.value.trim() || 'anonymous',
-    results: Object.values(state.results),
+    tester,
+    results: myResults(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json',
@@ -482,10 +571,112 @@ function exportResults() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `uat-trail-results-${Date.now()}.json`;
+  a.download = `uat-trail-results-${tester.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Exported JSON');
+  showToast('JSON downloaded — send file to coordinator');
+}
+
+function openCertificate(epic) {
+  const tester = els.testerName.value.trim();
+  if (!tester) {
+    showToast('Enter your Tester name first');
+    els.testerName.focus();
+    return;
+  }
+  const progress = epicProgress(epic);
+  const date = new Date().toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>UAT Certificate — ${escapeHtml(tester)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --green:#34bb78; --ink:#191f1c; --muted:#5c6761; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: Inter, system-ui, sans-serif; color: var(--ink);
+      background: #f7f9f8; padding: 1.5rem;
+    }
+    .sheet {
+      width: min(900px, 100%); aspect-ratio: 1.414 / 1; max-height: 95vh;
+      background: #fff; border: 1px solid rgba(25,31,28,.12);
+      border-radius: 18px; padding: 2.5rem 3rem; position: relative;
+      box-shadow: 0 16px 40px rgba(25,31,28,.08);
+      display: flex; flex-direction: column; justify-content: space-between;
+      background-image:
+        linear-gradient(135deg, rgba(52,187,120,.12), transparent 42%),
+        linear-gradient(0deg, #fff, #fff);
+    }
+    .sheet::before {
+      content: ""; position: absolute; inset: 14px; border: 2px solid rgba(52,187,120,.35);
+      border-radius: 12px; pointer-events: none;
+    }
+    .brand { color: var(--green); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: .85rem; }
+    h1 { margin: .35rem 0 0; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; }
+    .name { margin: 1.4rem 0 .35rem; font-size: clamp(1.6rem, 3.5vw, 2.2rem); color: var(--green); }
+    .body { color: var(--muted); font-size: 1.05rem; line-height: 1.55; max-width: 36rem; }
+    .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.25rem; }
+    .stat { padding: .55rem .85rem; border-radius: 999px; background: rgba(52,187,120,.12); font-weight: 600; font-size: .9rem; }
+    .foot { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-top: 2rem; }
+    .sign { border-top: 1px solid rgba(25,31,28,.2); padding-top: .45rem; min-width: 10rem; font-size: .85rem; color: var(--muted); }
+    .actions { position: fixed; top: 1rem; right: 1rem; display: flex; gap: .5rem; }
+    .actions button {
+      border: 0; border-radius: 999px; padding: .65rem 1rem; font: inherit; font-weight: 600; cursor: pointer;
+      background: var(--green); color: #fff;
+    }
+    .actions button.secondary { background: #191f1c; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .sheet { box-shadow: none; border: none; width: 100%; height: 100vh; max-height: none; border-radius: 0; }
+      .actions { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="actions">
+    <button type="button" onclick="window.print()">Print / Save PDF</button>
+    <button type="button" class="secondary" onclick="window.close()">Close</button>
+  </div>
+  <article class="sheet">
+    <div>
+      <p class="brand">Bolt Food · UAT Trail</p>
+      <h1>Certificate of Appreciation</h1>
+      <p class="body" style="margin-top:1rem">This certifies that</p>
+      <p class="name">${escapeHtml(tester)}</p>
+      <p class="body">
+        completed user acceptance testing for
+        <strong>${escapeHtml(epic.jiraKey)} — ${escapeHtml(epic.name)}</strong>
+        and helped make Bolt Food better for merchants and teams.
+      </p>
+      <div class="stats">
+        <span class="stat">${progress.total} missions</span>
+        <span class="stat">${progress.passed} passed</span>
+        <span class="stat">${progress.failed} bugs caught</span>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="sign">UAT Coordinator<br/>Bolt Food Salesforce</div>
+      <div class="sign" style="text-align:right">${escapeHtml(date)}</div>
+    </div>
+  </article>
+  <script>setTimeout(() => window.print(), 450);</script>
+</body>
+</html>`;
+  const win = window.open('', '_blank', 'noopener,noreferrer,width=980,height=720');
+  if (!win) {
+    showToast('Allow pop-ups to print the certificate');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }
 
 function clearMyResults() {
