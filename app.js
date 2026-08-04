@@ -424,7 +424,7 @@ function renderMission(epic, mission) {
     <section class="mission-detail">
       <div class="mission-split">
         <div class="mission-main">
-          <details class="collapse" open>
+          <details class="collapse goal-block" open>
             <summary>Goal</summary>
             <p class="goal">${escapeHtml(mission.goal)}</p>
           </details>

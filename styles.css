@@ -577,6 +577,24 @@ a {
   margin-top: 0.55rem;
 }
 
+.mission-detail .goal-block {
+  padding: 0.8rem 1rem 1rem;
+  border-color: rgba(7, 151, 93, 0.3);
+  background: linear-gradient(135deg, rgba(47, 239, 146, 0.12), #ffffff 70%);
+}
+
+.mission-detail .goal-block > summary {
+  font-size: 0.8rem;
+  color: var(--bolt-green-11);
+}
+
+.mission-detail .goal-block .goal {
+  margin-top: 0.7rem;
+  font-size: clamp(1.15rem, 2vw, 1.3rem);
+  line-height: 1.55;
+  font-weight: 600;
+}
+
 .done-box {
   border: 1px solid rgba(43, 134, 89, 0.25);
   border-radius: var(--radius);
