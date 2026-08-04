@@ -702,9 +702,10 @@ body.shake {
   top: 1.25rem;
   left: 50%;
   z-index: 10000;
-  display: grid;
-  gap: 0.2rem;
-  min-width: min(92vw, 360px);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: min(92vw, 380px);
   padding: 0.85rem 1.1rem;
   border-radius: 14px;
   border: 1px solid rgba(196, 92, 38, 0.35);
@@ -720,6 +721,41 @@ body.shake {
 .catch-chip.show {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+.catch-bug {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  animation: bug-wiggle 0.7s ease-in-out 2;
+}
+
+@keyframes bug-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-10deg) scale(1.06);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.08);
+  }
+  75% {
+    transform: rotate(-6deg) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catch-bug {
+    animation: none;
+  }
+}
+
+.catch-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .catch-chip strong {

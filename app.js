@@ -577,14 +577,22 @@ function showCatchChip() {
   const line = CATCH_LINES[Math.floor(Math.random() * CATCH_LINES.length)];
   els.catchLine.textContent = line;
   els.catchChip.hidden = false;
-  els.catchChip.classList.add('show');
+  els.catchChip.classList.remove('show');
+  // replay bug wiggle
+  const bug = els.catchChip.querySelector('.catch-bug');
+  if (bug) {
+    bug.style.animation = 'none';
+    void bug.offsetWidth;
+    bug.style.animation = '';
+  }
+  requestAnimationFrame(() => els.catchChip.classList.add('show'));
   clearTimeout(showCatchChip._t);
   showCatchChip._t = setTimeout(() => {
     els.catchChip.classList.remove('show');
     setTimeout(() => {
       els.catchChip.hidden = true;
     }, 220);
-  }, 2800);
+  }, 6500);
 }
 
 const BUG_BURST_COLORS = ['#c45c26', '#e0a800', '#c73a2e', '#ff8a5b', '#ffffff'];
