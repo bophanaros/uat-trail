@@ -96,16 +96,21 @@
       </div>
     </div>
     <div id="toast" class="toast" role="status"></div>
+    <div id="tokenPop" class="token-pop" role="status" aria-live="polite" hidden>
+      <span class="token-pop-coin">TT</span>
+      <strong id="tokenPopAmount">+10</strong>
+      <span>Trail Tokens</span>
+    </div>
 
     <div id="certificateModal" class="cert-modal" hidden>
       <div class="cert-modal-actions">
         <button type="button" class="btn btn-lime" id="certPrintBtn">Print / Save PDF</button>
         <button type="button" class="btn btn-secondary" id="certCloseBtn">Close</button>
       </div>
-      <article class="cert-sheet" aria-label="UAT certificate">
+      <article class="cert-sheet tier-bronze" id="certSheet" aria-label="UAT certificate">
         <img class="cert-character" src="./assets/uat-bug-hunter-black-net.png" alt="" aria-hidden="true" />
         <p class="cert-brand"><strong>Bolt Food</strong><span>UAT Trail</span></p>
-        <p class="cert-kicker">UAT Trailblazer</p>
+        <p class="cert-kicker" id="certKicker">Bronze UAT Trailblazer</p>
         <h1 class="cert-title">Certificate of Appreciation</h1>
         <p class="cert-intro">Presented to</p>
         <p class="cert-name" id="certTesterName">—</p>

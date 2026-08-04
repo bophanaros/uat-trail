@@ -40,8 +40,12 @@ const els = {
   certTesterName: document.getElementById('certTesterName'),
   certFeatureName: document.getElementById('certFeatureName'),
   certFootDate: document.getElementById('certFootDate'),
+  certSheet: document.getElementById('certSheet'),
+  certKicker: document.getElementById('certKicker'),
   certPrintBtn: document.getElementById('certPrintBtn'),
   certCloseBtn: document.getElementById('certCloseBtn'),
+  tokenPop: document.getElementById('tokenPop'),
+  tokenPopAmount: document.getElementById('tokenPopAmount'),
 };
 
 els.testerName.value = localStorage.getItem(TESTER_KEY) || '';
@@ -173,13 +177,124 @@ function epicProgress(epic) {
 }
 
 function allStepsAssessed(epic) {
-  return epic.missions.every((mission) => {
-    const steps = state.stepResults[resultKey(epic.id, mission.id)] || {};
-    return mission.steps.every((_, index) => {
-      const outcome = steps[String(index)]?.outcome;
-      return outcome === 'Pass' || outcome === 'Fail';
-    });
+  return epic.missions.every((mission) => missionFullyAssessed(epic.id, mission));
+}
+
+function missionFullyAssessed(epicId, mission) {
+  const steps = state.stepResults[resultKey(epicId, mission.id)] || {};
+  return mission.steps.every((_, index) => {
+    const outcome = steps[String(index)]?.outcome;
+    return outcome === 'Pass' || outcome === 'Fail';
   });
+}
+
+function rewardProgress(epic) {
+  let assessedSteps = 0;
+  let completedMissions = 0;
+  let documentedIssues = 0;
+  let bugsFound = 0;
+
+  for (const mission of epic.missions) {
+    const steps = state.stepResults[resultKey(epic.id, mission.id)] || {};
+    if (missionFullyAssessed(epic.id, mission)) completedMissions += 1;
+    for (let index = 0; index < mission.steps.length; index += 1) {
+      const step = steps[String(index)] || {};
+      if (step.outcome === 'Pass' || step.outcome === 'Fail') assessedSteps += 1;
+      if (step.outcome === 'Fail') {
+        bugsFound += 1;
+        if ((step.notes || '').trim().length >= 10) documentedIssues += 1;
+      }
+    }
+  }
+
+  const tokens = assessedSteps * 10 + completedMissions * 20 + documentedIssues * 10;
+  const totalMissions = epic.missions.length;
+  let tier = 'Locked';
+  if (completedMissions >= totalMissions && totalMissions > 0) tier = 'Gold';
+  else if (completedMissions >= 3) tier = 'Silver';
+  else if (completedMissions >= 1) tier = 'Bronze';
+
+  const badges = [];
+  if (bugsFound > 0) badges.push({ icon: '⌁', label: 'Bug Catcher' });
+  if (documentedIssues > 0) badges.push({ icon: '✎', label: 'Helpful Reporter' });
+  if (completedMissions === totalMissions && totalMissions > 0) {
+    badges.push({ icon: '★', label: 'Trail Finisher' });
+  }
+
+  return {
+    assessedSteps,
+    completedMissions,
+    documentedIssues,
+    bugsFound,
+    tokens,
+    tier,
+    badges,
+    totalMissions,
+  };
+}
+
+function nextTierCopy(reward) {
+  if (reward.tier === 'Gold') return 'Highest certificate tier unlocked';
+  if (reward.tier === 'Silver') {
+    const remaining = reward.totalMissions - reward.completedMissions;
+    return remaining + ' more mission' + (remaining === 1 ? '' : 's') + ' to Gold';
+  }
+  if (reward.tier === 'Bronze') {
+    const remaining = Math.max(3 - reward.completedMissions, 0);
+    return remaining + ' more mission' + (remaining === 1 ? '' : 's') + ' to Silver';
+  }
+  return 'Complete one mission to unlock Bronze';
+}
+
+function renderRewardPanel(epic) {
+  const reward = rewardProgress(epic);
+  const tierClass = reward.tier.toLowerCase();
+  const badgeMarkup = reward.badges.length
+    ? reward.badges
+        .map(
+          (badge) =>
+            `<span class="reward-badge"><i aria-hidden="true">${badge.icon}</i>${escapeHtml(badge.label)}</span>`
+        )
+        .join('')
+    : '<span class="reward-badge reward-badge-locked"><i aria-hidden="true">◇</i>Badges unlock as you test</span>';
+  const certificateButton =
+    reward.tier === 'Locked'
+      ? '<button class="btn btn-secondary reward-cert-btn" type="button" disabled>Certificate locked</button>'
+      : `<button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">View ${reward.tier} certificate</button>`;
+
+  return `
+    <section class="reward-panel tier-${tierClass}" aria-label="UAT rewards">
+      <div class="reward-wallet">
+        <span class="trail-token" aria-hidden="true">TT</span>
+        <div>
+          <span>Trail Tokens</span>
+          <strong data-reward-token-count>${reward.tokens}</strong>
+        </div>
+      </div>
+      <div class="reward-tier">
+        <div class="reward-tier-heading">
+          <span class="reward-tier-medal" aria-hidden="true">${
+            reward.tier === 'Gold' ? '★' : reward.tier === 'Silver' ? '◆' : reward.tier === 'Bronze' ? '●' : '○'
+          }</span>
+          <div>
+            <span>Certificate tier</span>
+            <strong>${escapeHtml(reward.tier)}</strong>
+          </div>
+        </div>
+        <div class="reward-progress" aria-label="${reward.completedMissions} of ${reward.totalMissions} missions completed">
+          <span style="width:${reward.totalMissions ? (reward.completedMissions / reward.totalMissions) * 100 : 0}%"></span>
+        </div>
+        <small>${escapeHtml(nextTierCopy(reward))}</small>
+      </div>
+      <div class="reward-badges" aria-label="Collected badges">${badgeMarkup}</div>
+      ${certificateButton}
+    </section>
+  `;
+}
+
+function updateRewardTokenCount(epic) {
+  const count = document.querySelector('[data-reward-token-count]');
+  if (count) count.textContent = String(rewardProgress(epic).tokens);
 }
 
 function statusBadge(outcome) {
@@ -301,6 +416,7 @@ function renderDetail() {
       <div class="progress-block">${renderSegBar(progress)}</div>
     </div>
     <p class="goal">${escapeHtml(epic.summary)}</p>
+    ${renderRewardPanel(epic)}
     ${renderFinishBanner(epic, progress)}
 
     <div style="margin-top:1.1rem">
@@ -351,6 +467,9 @@ function renderDetail() {
   });
 
   els.epicDetail.querySelector('#certificateBtn')?.addEventListener('click', () => {
+    openCertificate(epic);
+  });
+  els.epicDetail.querySelector('#rewardCertificateBtn')?.addEventListener('click', () => {
     openCertificate(epic);
   });
   els.epicDetail.querySelector('#finishSubmitBtn')?.addEventListener('click', () => {
@@ -532,6 +651,7 @@ function renderMission(epic, mission) {
 
 function setStepOutcome(epic, mission, stepIndex, outcome) {
   const wasTrailComplete = allStepsAssessed(epic);
+  const tokensBefore = rewardProgress(epic).tokens;
   const key = resultKey(epic.id, mission.id);
   const results = state.stepResults[key] || {};
   const previous = results[String(stepIndex)] || {};
@@ -541,9 +661,11 @@ function setStepOutcome(epic, mission, stepIndex, outcome) {
   saveStepResults();
   syncMissionResult(epic, mission);
   const trailJustCompleted = !wasTrailComplete && allStepsAssessed(epic);
+  const tokensEarned = rewardProgress(epic).tokens - tokensBefore;
 
   if (outcome === 'Fail') state.pendingStepNotesFocus = stepIndex;
   render();
+  if (tokensEarned > 0) showTokenPop(tokensEarned);
 
   if (trailJustCompleted) {
     launchFireworks();
@@ -561,6 +683,7 @@ function setStepOutcome(epic, mission, stepIndex, outcome) {
 }
 
 function setStepNote(epic, mission, stepIndex, notes) {
+  const tokensBefore = rewardProgress(epic).tokens;
   const key = resultKey(epic.id, mission.id);
   const results = state.stepResults[key] || {};
   const previous = results[String(stepIndex)] || { outcome: 'Fail' };
@@ -568,6 +691,12 @@ function setStepNote(epic, mission, stepIndex, notes) {
   state.stepResults[key] = results;
   saveStepResults();
   syncMissionResult(epic, mission);
+  const tokensEarned = rewardProgress(epic).tokens - tokensBefore;
+  if (tokensEarned > 0) {
+    updateRewardTokenCount(epic);
+    showTokenPop(tokensEarned);
+    showToast('+10 Trail Tokens · Helpful feedback bonus!');
+  }
 }
 
 function syncMissionResult(epic, mission) {
@@ -770,6 +899,11 @@ function openCertificate(epic) {
     showToast('Certificate view unavailable');
     return;
   }
+  const reward = rewardProgress(epic);
+  if (reward.tier === 'Locked') {
+    showToast('Complete one mission to unlock your Bronze certificate');
+    return;
+  }
 
   const date = new Date().toLocaleDateString(undefined, {
     year: 'numeric',
@@ -781,6 +915,9 @@ function openCertificate(epic) {
   els.certTesterName.textContent = tester;
   els.certFeatureName.textContent = featureName;
   els.certFootDate.textContent = date;
+  els.certKicker.textContent = reward.tier + ' UAT Trailblazer';
+  els.certSheet.classList.remove('tier-bronze', 'tier-silver', 'tier-gold');
+  els.certSheet.classList.add('tier-' + reward.tier.toLowerCase());
 
   els.certificateModal.hidden = false;
   document.body.classList.add('cert-open');
@@ -821,6 +958,22 @@ function showToast(message, duration = 1800) {
   els.toast.classList.add('show');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => els.toast.classList.remove('show'), duration);
+}
+
+function showTokenPop(amount) {
+  if (!els.tokenPop || !els.tokenPopAmount || amount <= 0) return;
+  els.tokenPopAmount.textContent = '+' + amount;
+  els.tokenPop.hidden = false;
+  els.tokenPop.classList.remove('show');
+  void els.tokenPop.offsetWidth;
+  els.tokenPop.classList.add('show');
+  clearTimeout(showTokenPop._t);
+  showTokenPop._t = setTimeout(() => {
+    els.tokenPop.classList.remove('show');
+    setTimeout(() => {
+      els.tokenPop.hidden = true;
+    }, 220);
+  }, 1800);
 }
 
 function focusStepNotes(stepIndex) {
