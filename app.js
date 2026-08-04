@@ -518,7 +518,6 @@ function wireMissionForm(epic, mission) {
 function renderMission(epic, mission) {
   const existing = getResult(epic.id, mission.id) || {};
   const outcome = missionStatus(epic.id, mission.id);
-  const outcomeBadge = statusBadge(outcome);
   const stepProgress = missionStepProgress(epic.id, mission);
   const checklistKey = resultKey(epic.id, mission.id);
   const checks = state.checklists[checklistKey] || {};
@@ -597,21 +596,12 @@ function renderMission(epic, mission) {
         <aside class="result-panel">
           <h3>Mission summary</h3>
           <div class="mission-status-summary">
-            <span class="badge ${outcomeBadge.className}">${escapeHtml(outcomeBadge.label)}</span>
             <strong>${stepProgress.answered} of ${stepProgress.total} steps assessed</strong>
             <span>${stepProgress.passed} passed · ${stepProgress.failed} issue${
               stepProgress.failed === 1 ? '' : 's'
             } found</span>
           </div>
           <form class="form" id="resultForm">
-            <label>
-              Feedback type
-              <select name="feedbackType">
-                <option value="None" ${!existing.feedbackType || existing.feedbackType === 'None' ? 'selected' : ''}>None</option>
-                <option value="Broken" ${existing.feedbackType === 'Broken' ? 'selected' : ''}>Broken (bug)</option>
-                <option value="Improve" ${existing.feedbackType === 'Improve' ? 'selected' : ''}>Improve (UX/process)</option>
-              </select>
-            </label>
             <label>
               Overall mission notes
               <textarea class="mission-notes" name="notes" placeholder="${
@@ -725,8 +715,7 @@ function submitResult(epicId, missionId, formData) {
   const tester = els.testerName.value.trim() || 'anonymous';
   localStorage.setItem(TESTER_KEY, tester);
   const outcome = formData.get('outcome');
-  let feedbackType = formData.get('feedbackType') || 'None';
-  if (outcome === 'Fail' && feedbackType === 'None') feedbackType = 'Broken';
+  const feedbackType = outcome === 'Fail' ? 'Broken' : 'None';
   const previous = getResult(epicId, missionId) || {};
 
   const result = { ...previous };

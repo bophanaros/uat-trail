@@ -809,10 +809,6 @@ a {
   background: rgba(255, 252, 247, 0.86);
 }
 
-.mission-status-summary .badge {
-  justify-self: start;
-}
-
 .mission-status-summary strong {
   font-size: 0.9rem;
 }
