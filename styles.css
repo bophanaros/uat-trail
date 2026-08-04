@@ -855,7 +855,10 @@ textarea.notes-hunt {
   gap: 0.75rem;
   padding: 1.25rem;
   overflow: auto;
-  background: rgba(25, 31, 28, 0.45);
+  background:
+    radial-gradient(circle at 20% 15%, rgba(52, 187, 120, 0.35), transparent 42%),
+    radial-gradient(circle at 85% 80%, rgba(224, 168, 0, 0.28), transparent 40%),
+    rgba(10, 40, 28, 0.72);
 }
 
 .cert-modal[hidden] {
@@ -873,12 +876,15 @@ textarea.notes-hunt {
   width: min(900px, 100%);
   min-height: 520px;
   padding: 2.4rem 2.6rem;
-  border-radius: 18px;
+  border-radius: 20px;
   background:
-    linear-gradient(135deg, rgba(52, 187, 120, 0.14), transparent 45%),
-    #fff;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
+    radial-gradient(circle at 100% 0%, rgba(255, 214, 64, 0.35), transparent 38%),
+    radial-gradient(circle at 0% 100%, rgba(90, 212, 255, 0.22), transparent 40%),
+    linear-gradient(145deg, #e8fff2 0%, #ffffff 42%, #fff8e8 100%);
+  border: 2px solid #34bb78;
+  box-shadow:
+    0 0 0 6px rgba(52, 187, 120, 0.18),
+    0 22px 48px rgba(24, 120, 76, 0.28);
   position: relative;
   color: var(--ink);
 }
@@ -887,36 +893,42 @@ textarea.notes-hunt {
   content: "";
   position: absolute;
   inset: 12px;
-  border: 2px solid rgba(52, 187, 120, 0.35);
-  border-radius: 12px;
+  border: 2px dashed rgba(52, 187, 120, 0.55);
+  border-radius: 14px;
   pointer-events: none;
 }
 
 .cert-brand {
   margin: 0;
-  color: var(--bolt-green);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  color: #0f9f5a;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .cert-title {
   margin: 0.4rem 0 0;
-  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  font-size: clamp(1.7rem, 4vw, 2.55rem);
   line-height: 1.15;
+  background: linear-gradient(90deg, #147b51, #34bb78 45%, #e0a800);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .cert-intro {
   margin: 1.2rem 0 0;
-  color: var(--bolt-muted);
+  color: #3d4a44;
+  font-weight: 500;
 }
 
 .cert-name {
   margin: 0.35rem 0 1rem;
-  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
-  font-weight: 700;
-  color: var(--bolt-green-10);
+  font-size: clamp(1.75rem, 4vw, 2.45rem);
+  font-weight: 800;
+  color: #0f9f5a;
+  text-shadow: 0 2px 0 rgba(52, 187, 120, 0.15);
 }
 
 .cert-meta {
@@ -928,30 +940,47 @@ textarea.notes-hunt {
 .cert-meta > div {
   display: grid;
   gap: 0.15rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
-  background: var(--bolt-gray-2);
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+}
+
+.cert-meta > div:nth-child(1) {
+  background: linear-gradient(135deg, rgba(52, 187, 120, 0.22), rgba(52, 187, 120, 0.08));
+  border-color: rgba(52, 187, 120, 0.35);
+}
+
+.cert-meta > div:nth-child(2) {
+  background: linear-gradient(135deg, rgba(224, 168, 0, 0.24), rgba(224, 168, 0, 0.08));
+  border-color: rgba(224, 168, 0, 0.4);
+}
+
+.cert-meta > div:nth-child(3) {
+  background: linear-gradient(135deg, rgba(90, 212, 255, 0.24), rgba(90, 212, 255, 0.08));
+  border-color: rgba(90, 212, 255, 0.4);
 }
 
 .cert-meta dt {
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--bolt-muted);
-  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #4a5a53;
+  font-weight: 800;
 }
 
 .cert-meta dd {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #12201a;
 }
 
 .cert-thanks {
   margin: 1.2rem 0 0;
-  color: var(--bolt-muted);
-  line-height: 1.5;
+  color: #3d4a44;
+  line-height: 1.55;
   max-width: 36rem;
+  font-weight: 500;
 }
 
 .cert-foot {
@@ -963,14 +992,16 @@ textarea.notes-hunt {
 
 .cert-sign {
   min-width: 10rem;
-  border-top: 1px solid rgba(25, 31, 28, 0.2);
-  padding-top: 0.45rem;
+  border-top: 2px solid #34bb78;
+  padding-top: 0.5rem;
   font-size: 0.85rem;
-  color: var(--bolt-muted);
+  color: #3d4a44;
+  font-weight: 600;
 }
 
 .cert-sign-right {
   text-align: right;
+  border-top-color: #e0a800;
 }
 
 @media print {
