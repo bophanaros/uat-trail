@@ -408,6 +408,19 @@ a {
   color: inherit;
 }
 
+.mission-card.expanded:not(.mission-passed):not(.mission-failed) > .mission-card-main {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(7, 151, 93, 0.2);
+  border-radius: 10px;
+  background: linear-gradient(100deg, rgba(47, 239, 146, 0.2), rgba(234, 255, 244, 0.7));
+}
+
+.mission-card.expanded:not(.mission-passed):not(.mission-failed)
+  > .mission-card-main
+  strong {
+  color: #05633f;
+}
+
 .mission-card-main strong {
   display: block;
   font-size: 0.95rem;
