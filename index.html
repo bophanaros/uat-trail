@@ -28,16 +28,16 @@
           your progress on the trail.
         </p>
         <div class="toolbar">
-          <label class="tester-chip">
-            Tester
+          <label class="tester-chip" for="testerName">
+            <span class="tester-chip-label">Tester name</span>
             <input
               id="testerName"
               type="text"
-              placeholder="Your name"
-              style="border: none; background: transparent; padding: 0; width: 8rem"
+              placeholder="Enter your name"
+              autocomplete="name"
             />
           </label>
-          <button class="btn btn-lime" id="submitBtn" type="button">
+          <button class="btn btn-lime" id="submitBtn" type="button" disabled>
             Submit results
           </button>
           <button class="btn btn-secondary" id="clearBtn" type="button">

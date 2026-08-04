@@ -45,8 +45,12 @@ const els = {
 };
 
 els.testerName.value = localStorage.getItem(TESTER_KEY) || '';
+els.testerName.addEventListener('input', () => {
+  updateSubmitAvailability();
+});
 els.testerName.addEventListener('change', () => {
   localStorage.setItem(TESTER_KEY, els.testerName.value.trim());
+  render();
 });
 
 els.submitBtn?.addEventListener('click', () => submitResults());
@@ -208,11 +212,34 @@ function doneWhenItems(doneWhen) {
 function render() {
   renderEpics();
   renderDetail();
+  updateSubmitAvailability();
   if (state.pendingStepNotesFocus !== null) {
     const stepIndex = state.pendingStepNotesFocus;
     state.pendingStepNotesFocus = null;
     focusStepNotes(stepIndex);
   }
+}
+
+function hasAssessedTask() {
+  const tester = (els.testerName.value || 'anonymous').trim().toLowerCase();
+  const prefix = `${tester}::`;
+  return Object.entries(state.stepResults).some(
+    ([key, steps]) =>
+      key.startsWith(prefix) &&
+      Object.values(steps || {}).some((step) => step?.outcome === 'Pass' || step?.outcome === 'Fail')
+  );
+}
+
+function updateSubmitAvailability() {
+  const disabled = !hasAssessedTask();
+  if (els.submitBtn) {
+    els.submitBtn.disabled = disabled;
+    els.submitBtn.title = disabled
+      ? 'Complete at least one mission step before submitting'
+      : 'Submit your UAT results';
+  }
+  const finishBtn = document.getElementById('finishSubmitBtn');
+  if (finishBtn) finishBtn.disabled = disabled;
 }
 
 function renderEpics() {
@@ -703,14 +730,11 @@ async function submitResults() {
     window.location.href = mailto;
     showToast('Opened email draft — click Send');
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = prevLabel || 'Submit results';
-    }
+    if (btn) btn.textContent = prevLabel || 'Submit results';
     if (finishBtn) {
-      finishBtn.disabled = false;
       finishBtn.textContent = 'Submit results';
     }
+    updateSubmitAvailability();
   }
 }
 
