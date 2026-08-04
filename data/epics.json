@@ -11,7 +11,7 @@
       "status": "Open",
       "testerPlan": {
         "howMany": 3,
-        "note": "All testers run missions 1–6. Set your Tester name before saving. Export JSON when done and send to the coordinator. ~60–90 minutes."
+        "note": "All testers run missions 1–6. Set your Tester name before saving. Click Submit results when done (sends to bophana.ros@bolt.eu). ~60–90 minutes."
       },
       "missions": [
         {

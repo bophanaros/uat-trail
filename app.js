@@ -20,11 +20,14 @@ const state = {
   pendingNotesFocus: false,
 };
 
+const RESULTS_INBOX = 'bophana.ros@bolt.eu';
+const FORMSUBMIT_ENDPOINT = `https://formsubmit.co/ajax/${RESULTS_INBOX}`;
+
 const els = {
   epicList: document.getElementById('epicList'),
   epicDetail: document.getElementById('epicDetail'),
   testerName: document.getElementById('testerName'),
-  exportBtn: document.getElementById('exportBtn'),
+  submitBtn: document.getElementById('submitBtn'),
   clearBtn: document.getElementById('clearBtn'),
   toast: document.getElementById('toast'),
   fireworks: document.getElementById('fireworks'),
@@ -38,7 +41,7 @@ els.testerName.addEventListener('change', () => {
   localStorage.setItem(TESTER_KEY, els.testerName.value.trim());
 });
 
-els.exportBtn.addEventListener('click', exportResults);
+els.submitBtn?.addEventListener('click', () => submitResults());
 document.getElementById('copySummaryBtn')?.addEventListener('click', copyResultsSummary);
 els.clearBtn.addEventListener('click', clearMyResults);
 
@@ -290,8 +293,8 @@ function renderDetail() {
   els.epicDetail.querySelector('#certificateBtn')?.addEventListener('click', () => {
     openCertificate(epic);
   });
-  els.epicDetail.querySelector('#finishExportBtn')?.addEventListener('click', () => {
-    exportResults();
+  els.epicDetail.querySelector('#finishSubmitBtn')?.addEventListener('click', () => {
+    submitResults();
   });
   els.epicDetail.querySelector('#finishCopyBtn')?.addEventListener('click', () => {
     copyResultsSummary();
@@ -309,12 +312,12 @@ function renderFinishBanner(epic, progress) {
       <div>
         <p class="section-label">Trail complete</p>
         <strong>${escapeHtml(tester)}, you finished ${progress.total} missions</strong>
-        <p class="meta">Send your results to the coordinator, then print your certificate.</p>
+        <p class="meta">Submit results to the coordinator, then print your certificate.</p>
       </div>
       <div class="finish-actions">
         <button class="btn btn-secondary" type="button" id="finishCopyBtn">Copy summary</button>
-        <button class="btn btn-secondary" type="button" id="finishExportBtn">Export JSON</button>
-        <button class="btn btn-lime" type="button" id="certificateBtn">Print certificate</button>
+        <button class="btn btn-lime" type="button" id="finishSubmitBtn">Submit results</button>
+        <button class="btn btn-secondary" type="button" id="certificateBtn">Print certificate</button>
       </div>
     </div>
   `;
@@ -436,7 +439,7 @@ function renderMission(epic, mission) {
             <div class="form-actions">
               <button class="btn btn-lime" type="submit">Save result</button>
             </div>
-            <p class="meta">Saved in this browser · export to share</p>
+            <p class="meta">Saved in this browser · Submit results when done</p>
           </form>
         </aside>
       </div>
@@ -559,22 +562,88 @@ function fallbackCopy(text, done) {
 }
 
 function exportResults() {
-  const tester = els.testerName.value.trim() || 'anonymous';
+  return submitResults();
+}
+
+async function submitResults() {
+  const tester = els.testerName.value.trim();
+  if (!tester) {
+    showToast('Enter your Tester name first');
+    els.testerName.focus();
+    return;
+  }
+
+  const epic = selectedEpic();
+  const results = myResults();
+  if (!results.length) {
+    showToast('No results to submit yet');
+    return;
+  }
+
+  const summary = buildResultsSummary();
+  const subject = `UAT Trail results — ${tester}${epic ? ` — ${epic.jiraKey}` : ''}`;
   const payload = {
-    exportedAt: new Date().toISOString(),
+    submittedAt: new Date().toISOString(),
     tester,
-    results: myResults(),
+    epic: epic
+      ? { id: epic.id, jiraKey: epic.jiraKey, name: epic.name, jiraUrl: epic.jiraUrl }
+      : null,
+    results,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: 'application/json',
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `uat-trail-results-${tester.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('JSON downloaded — send file to coordinator');
+
+  const btn = els.submitBtn;
+  const finishBtn = document.getElementById('finishSubmitBtn');
+  const prevLabel = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+  }
+  if (finishBtn) {
+    finishBtn.disabled = true;
+    finishBtn.textContent = 'Submitting…';
+  }
+  showToast('Submitting to inbox…');
+
+  try {
+    const res = await fetch(FORMSUBMIT_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        _subject: subject,
+        name: tester,
+        email: RESULTS_INBOX,
+        epic: epic ? `${epic.jiraKey} — ${epic.name}` : 'n/a',
+        summary,
+        results_json: JSON.stringify(payload, null, 2),
+        _template: 'table',
+        _captcha: 'false',
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === 'false' || data.success === false) {
+      throw new Error(data.message || 'Submit failed');
+    }
+    showToast(`Submitted to ${RESULTS_INBOX}`);
+  } catch (err) {
+    console.warn('Submit via FormSubmit failed, falling back to mailto', err);
+    const mailto = `mailto:${RESULTS_INBOX}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      `${summary}\n\n(Full JSON could not be auto-emailed — paste Copy summary if needed.)`
+    )}`;
+    window.location.href = mailto;
+    showToast('Opened email draft — click Send');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = prevLabel || 'Submit results';
+    }
+    if (finishBtn) {
+      finishBtn.disabled = false;
+      finishBtn.textContent = 'Submit results';
+    }
+  }
 }
 
 function openCertificate(epic) {
