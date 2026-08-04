@@ -171,6 +171,16 @@ function epicProgress(epic) {
   return { passed, failed, inProgress, pending, total: epic.missions.length };
 }
 
+function allStepsAssessed(epic) {
+  return epic.missions.every((mission) => {
+    const steps = state.stepResults[resultKey(epic.id, mission.id)] || {};
+    return mission.steps.every((_, index) => {
+      const outcome = steps[String(index)]?.outcome;
+      return outcome === 'Pass' || outcome === 'Fail';
+    });
+  });
+}
+
 function statusBadge(outcome) {
   if (outcome === 'Pass') return { label: 'Pass', className: 'badge-pass' };
   if (outcome === 'Fail') return { label: 'Fail', className: 'badge-fail' };
@@ -349,7 +359,7 @@ function renderDetail() {
 }
 
 function renderFinishBanner(epic, progress) {
-  const done = progress.pending === 0 && progress.inProgress === 0 && progress.total > 0;
+  const done = progress.total > 0 && allStepsAssessed(epic);
   if (!done) return '';
   const tester = els.testerName.value.trim() || 'Tester';
   return `
@@ -518,6 +528,7 @@ function renderMission(epic, mission) {
 }
 
 function setStepOutcome(epic, mission, stepIndex, outcome) {
+  const wasTrailComplete = allStepsAssessed(epic);
   const key = resultKey(epic.id, mission.id);
   const results = state.stepResults[key] || {};
   const previous = results[String(stepIndex)] || {};
@@ -526,16 +537,23 @@ function setStepOutcome(epic, mission, stepIndex, outcome) {
   state.stepResults[key] = results;
   saveStepResults();
   syncMissionResult(epic, mission);
+  const trailJustCompleted = !wasTrailComplete && allStepsAssessed(epic);
 
   if (outcome === 'Fail') state.pendingStepNotesFocus = stepIndex;
   render();
 
-  if (outcome === 'Fail') {
+  if (trailJustCompleted) {
+    launchFireworks();
+    showToast(
+      'Thank you for completing UAT! Your certificate is ready — use Print certificate at the top.',
+      6500
+    );
+  } else if (outcome === 'Fail') {
     celebrateFail();
     showToast('Bug caught — add a note to this step');
   } else {
     showToast('Step passed — nice work!');
-    if (previousStepOutcome !== 'Pass') launchFireworks();
+    if (previousStepOutcome !== 'Pass') launchConfetti();
   }
 }
 
@@ -795,11 +813,11 @@ function clearMyResults() {
   render();
 }
 
-function showToast(message) {
+function showToast(message, duration = 1800) {
   els.toast.textContent = message;
   els.toast.classList.add('show');
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => els.toast.classList.remove('show'), 1800);
+  showToast._t = setTimeout(() => els.toast.classList.remove('show'), duration);
 }
 
 function focusStepNotes(stepIndex) {
@@ -939,6 +957,72 @@ function launchBugBurst() {
 
 const FIREWORK_COLORS = ['#34bb78', '#18784c', '#e0a800', '#ffffff', '#7ee0a8', '#ff6b4a', '#5ad4ff'];
 let fireworksRaf = 0;
+
+function launchConfetti() {
+  const canvas = document.getElementById('fireworks') || els.fireworks;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  cancelAnimationFrame(fireworksRaf);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.classList.add('active');
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const colors = ['#2fef92', '#39c6ff', '#ffd84d', '#7c5cff', '#ff6b74'];
+  const pieces = [];
+  const count = reduceMotion ? 10 : 28;
+
+  for (let i = 0; i < count; i += 1) {
+    pieces.push({
+      x: w * 0.5 + (Math.random() - 0.5) * 70,
+      y: h * 0.16 + (Math.random() - 0.5) * 24,
+      vx: (Math.random() - 0.5) * 5,
+      vy: 0.8 + Math.random() * 2.4,
+      gravity: 0.045 + Math.random() * 0.035,
+      life: 1,
+      decay: 0.025 + Math.random() * 0.012,
+      width: 4 + Math.random() * 4,
+      height: 3 + Math.random() * 3,
+      color: colors[i % colors.length],
+    });
+  }
+
+  const started = performance.now();
+  const duration = reduceMotion ? 450 : 950;
+
+  const tick = (now) => {
+    ctx.clearRect(0, 0, w, h);
+    for (const piece of pieces) {
+      if (piece.life <= 0) continue;
+      piece.x += piece.vx;
+      piece.y += piece.vy;
+      piece.vy += piece.gravity;
+      piece.vx *= 0.985;
+      piece.life -= piece.decay;
+      ctx.globalAlpha = Math.max(piece.life, 0);
+      ctx.fillStyle = piece.color;
+      ctx.fillRect(piece.x, piece.y, piece.width, piece.height);
+    }
+    ctx.globalAlpha = 1;
+
+    if (now - started < duration) {
+      fireworksRaf = requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0, 0, w, h);
+      canvas.classList.remove('active');
+    }
+  };
+
+  fireworksRaf = requestAnimationFrame(tick);
+}
 
 function launchFireworks() {
   const canvas = document.getElementById('fireworks') || els.fireworks;

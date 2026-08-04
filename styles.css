@@ -1199,6 +1199,8 @@ textarea.notes-hunt {
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 20;
   font-weight: 600;
+  max-width: min(30rem, calc(100vw - 2rem));
+  line-height: 1.45;
 }
 
 .toast.show {
