@@ -1023,7 +1023,7 @@ function showCatchChip() {
   }, 6500);
 }
 
-const BUG_BURST_COLORS = ['#c45c26', '#e0a800', '#c73a2e', '#ff8a5b', '#ffffff'];
+const BUG_BURST_COLORS = ['#f7ad16', '#f26761', '#c84745', '#5ba6b5', '#fffaf2'];
 
 function launchBugBurst() {
   const canvas = document.getElementById('fireworks') || els.fireworks;
@@ -1093,7 +1093,7 @@ function launchBugBurst() {
   fireworksRaf = requestAnimationFrame(tick);
 }
 
-const FIREWORK_COLORS = ['#34bb78', '#18784c', '#e0a800', '#ffffff', '#7ee0a8', '#ff6b4a', '#5ad4ff'];
+const FIREWORK_COLORS = ['#3d806f', '#123b33', '#f7ad16', '#fffaf2', '#5ba6b5', '#f26761'];
 let fireworksRaf = 0;
 
 function launchConfetti() {
@@ -1114,7 +1114,7 @@ function launchConfetti() {
   canvas.classList.add('active');
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const colors = ['#2fef92', '#39c6ff', '#ffd84d', '#7c5cff', '#ff6b74'];
+  const colors = ['#3d806f', '#5ba6b5', '#f7ad16', '#f26761', '#f2e5d2'];
   const pieces = [];
   const count = reduceMotion ? 10 : 28;
 
