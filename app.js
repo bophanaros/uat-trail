@@ -234,7 +234,7 @@ function rewardProgress(epic) {
 }
 
 function nextTierCopy(reward) {
-  if (reward.tier === 'Gold') return 'Highest certificate tier unlocked';
+  if (reward.tier === 'Gold') return 'Trail complete — your Gold certificate is ready';
   if (reward.tier === 'Silver') {
     const remaining = reward.totalMissions - reward.completedMissions;
     return remaining + ' more mission' + (remaining === 1 ? '' : 's') + ' to Gold';
@@ -260,7 +260,12 @@ function renderRewardPanel(epic) {
   const certificateButton =
     reward.tier === 'Locked'
       ? '<button class="btn btn-secondary reward-cert-btn" type="button" disabled>Certificate locked</button>'
-      : `<button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">View ${reward.tier} certificate</button>`;
+      : reward.tier === 'Gold'
+        ? `<div class="reward-actions">
+            <button class="btn btn-lime" id="finishSubmitBtn" type="button">Submit results</button>
+            <button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">Print Gold certificate</button>
+          </div>`
+        : `<button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">View ${reward.tier} certificate</button>`;
 
   return `
     <section class="reward-panel tier-${tierClass}" aria-label="UAT rewards">
@@ -417,7 +422,6 @@ function renderDetail() {
     </div>
     <p class="goal">${escapeHtml(epic.summary)}</p>
     ${renderRewardPanel(epic)}
-    ${renderFinishBanner(epic, progress)}
 
     <div style="margin-top:1.1rem">
       <p class="section-label">Missions</p>
@@ -466,9 +470,6 @@ function renderDetail() {
     });
   });
 
-  els.epicDetail.querySelector('#certificateBtn')?.addEventListener('click', () => {
-    openCertificate(epic);
-  });
   els.epicDetail.querySelector('#rewardCertificateBtn')?.addEventListener('click', () => {
     openCertificate(epic);
   });
@@ -476,25 +477,6 @@ function renderDetail() {
     submitResults();
   });
   wireMissionForm(epic, mission);
-}
-
-function renderFinishBanner(epic, progress) {
-  const done = progress.total > 0 && allStepsAssessed(epic);
-  if (!done) return '';
-  const tester = els.testerName.value.trim() || 'Tester';
-  return `
-    <div class="finish-banner">
-      <div>
-        <p class="section-label">Trail complete</p>
-        <strong>${escapeHtml(tester)}, you finished ${progress.total} missions</strong>
-        <p class="meta">Submit results to the coordinator, then print your certificate.</p>
-      </div>
-      <div class="finish-actions">
-        <button class="btn btn-lime" type="button" id="finishSubmitBtn">Submit results</button>
-        <button class="btn btn-secondary" type="button" id="certificateBtn">Print certificate</button>
-      </div>
-    </div>
-  `;
 }
 
 function wireMissionForm(epic, mission) {
