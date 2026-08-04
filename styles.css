@@ -616,6 +616,7 @@ a {
 }
 
 .done-box .section-label {
+  font-size: 0.8rem;
   color: var(--bolt-green-11);
 }
 
@@ -637,9 +638,11 @@ a {
 }
 
 .done-list input {
-  width: auto;
-  margin-top: 0.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.05rem 0 0;
   accent-color: var(--bolt-green-9);
+  cursor: pointer;
 }
 
 .steps-block {
