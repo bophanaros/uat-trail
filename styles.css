@@ -11,7 +11,7 @@
   --violet: #7c5cff;
   --coral: #ff5b5b;
   --bolt-ink: #191f1c;
-  --bolt-muted: #5c6761;
+  --bolt-muted: #3f4944;
   --bolt-gray-1: #fbfdfc;
   --bolt-gray-2: #f7f9f8;
   --bolt-gray-3: #eef2f0;
@@ -28,7 +28,7 @@
   --warn-soft: #e0a800;
   --fail: #e52e55;
   --pass: #008a55;
-  --pending: #6b756f;
+  --pending: #424c47;
   --in-progress: #b8860b;
   --line: var(--bolt-line);
   --shadow: 0 14px 36px rgba(22, 58, 46, 0.12);
@@ -445,6 +445,7 @@ a {
 .badge {
   display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -454,6 +455,22 @@ a {
   background: var(--bolt-gray-3);
   color: var(--pending);
   white-space: nowrap;
+}
+
+.badge-pass::before {
+  content: "✓";
+}
+
+.badge-fail::before {
+  content: "×";
+}
+
+.badge-progress::before {
+  content: "◐";
+}
+
+.badge-pending::before {
+  content: "○";
 }
 
 .badge-pass {
@@ -1247,7 +1264,7 @@ textarea.notes-hunt {
 }
 
 .hero .tester-chip input::placeholder {
-  color: #52615a;
+  color: #46514b;
   font-weight: 500;
 }
 
