@@ -34,6 +34,14 @@ const els = {
   catchChip: document.getElementById('catchChip'),
   catchLine: document.getElementById('catchLine'),
   hunterBadge: document.getElementById('hunterBadge'),
+  certificateModal: document.getElementById('certificateModal'),
+  certTesterName: document.getElementById('certTesterName'),
+  certFeatureName: document.getElementById('certFeatureName'),
+  certDate: document.getElementById('certDate'),
+  certStats: document.getElementById('certStats'),
+  certFootDate: document.getElementById('certFootDate'),
+  certPrintBtn: document.getElementById('certPrintBtn'),
+  certCloseBtn: document.getElementById('certCloseBtn'),
 };
 
 els.testerName.value = localStorage.getItem(TESTER_KEY) || '';
@@ -44,6 +52,16 @@ els.testerName.addEventListener('change', () => {
 els.submitBtn?.addEventListener('click', () => submitResults());
 document.getElementById('copySummaryBtn')?.addEventListener('click', copyResultsSummary);
 els.clearBtn.addEventListener('click', clearMyResults);
+els.certPrintBtn?.addEventListener('click', () => window.print());
+els.certCloseBtn?.addEventListener('click', closeCertificate);
+els.certificateModal?.addEventListener('click', (event) => {
+  if (event.target === els.certificateModal) closeCertificate();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && els.certificateModal && !els.certificateModal.hidden) {
+    closeCertificate();
+  }
+});
 
 init();
 
@@ -653,99 +671,34 @@ function openCertificate(epic) {
     els.testerName.focus();
     return;
   }
+  if (!els.certificateModal) {
+    showToast('Certificate view unavailable');
+    return;
+  }
+
   const progress = epicProgress(epic);
   const date = new Date().toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>UAT Certificate — ${escapeHtml(tester)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root { --green:#34bb78; --ink:#191f1c; --muted:#5c6761; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center;
-      font-family: Inter, system-ui, sans-serif; color: var(--ink);
-      background: #f7f9f8; padding: 1.5rem;
-    }
-    .sheet {
-      width: min(900px, 100%); aspect-ratio: 1.414 / 1; max-height: 95vh;
-      background: #fff; border: 1px solid rgba(25,31,28,.12);
-      border-radius: 18px; padding: 2.5rem 3rem; position: relative;
-      box-shadow: 0 16px 40px rgba(25,31,28,.08);
-      display: flex; flex-direction: column; justify-content: space-between;
-      background-image:
-        linear-gradient(135deg, rgba(52,187,120,.12), transparent 42%),
-        linear-gradient(0deg, #fff, #fff);
-    }
-    .sheet::before {
-      content: ""; position: absolute; inset: 14px; border: 2px solid rgba(52,187,120,.35);
-      border-radius: 12px; pointer-events: none;
-    }
-    .brand { color: var(--green); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: .85rem; }
-    h1 { margin: .35rem 0 0; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; }
-    .name { margin: 1.4rem 0 .35rem; font-size: clamp(1.6rem, 3.5vw, 2.2rem); color: var(--green); }
-    .body { color: var(--muted); font-size: 1.05rem; line-height: 1.55; max-width: 36rem; }
-    .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.25rem; }
-    .stat { padding: .55rem .85rem; border-radius: 999px; background: rgba(52,187,120,.12); font-weight: 600; font-size: .9rem; }
-    .foot { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-top: 2rem; }
-    .sign { border-top: 1px solid rgba(25,31,28,.2); padding-top: .45rem; min-width: 10rem; font-size: .85rem; color: var(--muted); }
-    .actions { position: fixed; top: 1rem; right: 1rem; display: flex; gap: .5rem; }
-    .actions button {
-      border: 0; border-radius: 999px; padding: .65rem 1rem; font: inherit; font-weight: 600; cursor: pointer;
-      background: var(--green); color: #fff;
-    }
-    .actions button.secondary { background: #191f1c; }
-    @media print {
-      body { background: #fff; padding: 0; }
-      .sheet { box-shadow: none; border: none; width: 100%; height: 100vh; max-height: none; border-radius: 0; }
-      .actions { display: none !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="actions">
-    <button type="button" onclick="window.print()">Print / Save PDF</button>
-    <button type="button" class="secondary" onclick="window.close()">Close</button>
-  </div>
-  <article class="sheet">
-    <div>
-      <p class="brand">Bolt Food · UAT Trail</p>
-      <h1>Certificate of Appreciation</h1>
-      <p class="body" style="margin-top:1rem">This certifies that</p>
-      <p class="name">${escapeHtml(tester)}</p>
-      <p class="body">
-        completed user acceptance testing for
-        <strong>${escapeHtml(epic.jiraKey)} — ${escapeHtml(epic.name)}</strong>
-        and helped make Bolt Food better for merchants and teams.
-      </p>
-      <div class="stats">
-        <span class="stat">${progress.total} missions</span>
-        <span class="stat">${progress.passed} passed</span>
-        <span class="stat">${progress.failed} bugs caught</span>
-      </div>
-    </div>
-    <div class="foot">
-      <div class="sign">UAT Coordinator<br/>Bolt Food Salesforce</div>
-      <div class="sign" style="text-align:right">${escapeHtml(date)}</div>
-    </div>
-  </article>
-  <script>setTimeout(() => window.print(), 450);</script>
-</body>
-</html>`;
-  const win = window.open('', '_blank', 'noopener,noreferrer,width=980,height=720');
-  if (!win) {
-    showToast('Allow pop-ups to print the certificate');
-    return;
-  }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  const featureName = `${epic.jiraKey} — ${epic.name}`;
+
+  els.certTesterName.textContent = tester;
+  els.certFeatureName.textContent = featureName;
+  els.certDate.textContent = date;
+  els.certStats.textContent = `${progress.total} missions · ${progress.passed} passed · ${progress.failed} bugs caught`;
+  els.certFootDate.textContent = date;
+
+  els.certificateModal.hidden = false;
+  document.body.classList.add('cert-open');
+  els.certPrintBtn?.focus();
+}
+
+function closeCertificate() {
+  if (!els.certificateModal) return;
+  els.certificateModal.hidden = true;
+  document.body.classList.remove('cert-open');
 }
 
 function clearMyResults() {

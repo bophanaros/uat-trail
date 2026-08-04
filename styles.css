@@ -846,6 +846,165 @@ textarea.notes-hunt {
   line-height: 1.45;
 }
 
+.cert-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  overflow: auto;
+  background: rgba(25, 31, 28, 0.45);
+}
+
+.cert-modal[hidden] {
+  display: none !important;
+}
+
+.cert-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  width: min(900px, 100%);
+}
+
+.cert-sheet {
+  width: min(900px, 100%);
+  min-height: 520px;
+  padding: 2.4rem 2.6rem;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(52, 187, 120, 0.14), transparent 45%),
+    #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  position: relative;
+  color: var(--ink);
+}
+
+.cert-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 2px solid rgba(52, 187, 120, 0.35);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.cert-brand {
+  margin: 0;
+  color: var(--bolt-green);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.cert-title {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  line-height: 1.15;
+}
+
+.cert-intro {
+  margin: 1.2rem 0 0;
+  color: var(--bolt-muted);
+}
+
+.cert-name {
+  margin: 0.35rem 0 1rem;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 700;
+  color: var(--bolt-green-10);
+}
+
+.cert-meta {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cert-meta > div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: var(--bolt-gray-2);
+}
+
+.cert-meta dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bolt-muted);
+  font-weight: 700;
+}
+
+.cert-meta dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.cert-thanks {
+  margin: 1.2rem 0 0;
+  color: var(--bolt-muted);
+  line-height: 1.5;
+  max-width: 36rem;
+}
+
+.cert-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cert-sign {
+  min-width: 10rem;
+  border-top: 1px solid rgba(25, 31, 28, 0.2);
+  padding-top: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--bolt-muted);
+}
+
+.cert-sign-right {
+  text-align: right;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #certificateModal,
+  #certificateModal * {
+    visibility: visible !important;
+  }
+
+  #certificateModal {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    background: #fff !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .cert-modal-actions {
+    display: none !important;
+  }
+
+  .cert-sheet {
+    width: 100% !important;
+    min-height: 100vh !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+}
+
 .finish-banner {
   margin-top: 1.1rem;
   padding: 1rem 1.1rem;

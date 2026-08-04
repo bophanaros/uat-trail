@@ -75,6 +75,42 @@
       </div>
     </div>
     <div id="toast" class="toast" role="status"></div>
+
+    <div id="certificateModal" class="cert-modal" hidden>
+      <div class="cert-modal-actions">
+        <button type="button" class="btn btn-lime" id="certPrintBtn">Print / Save PDF</button>
+        <button type="button" class="btn btn-secondary" id="certCloseBtn">Close</button>
+      </div>
+      <article class="cert-sheet" aria-label="UAT certificate">
+        <p class="cert-brand">Bolt Food · UAT Trail</p>
+        <h1 class="cert-title">Certificate of Appreciation</h1>
+        <p class="cert-intro">This certifies that</p>
+        <p class="cert-name" id="certTesterName">—</p>
+        <dl class="cert-meta">
+          <div>
+            <dt>Feature / epic</dt>
+            <dd id="certFeatureName">—</dd>
+          </div>
+          <div>
+            <dt>Completion date</dt>
+            <dd id="certDate">—</dd>
+          </div>
+          <div>
+            <dt>Results</dt>
+            <dd id="certStats">—</dd>
+          </div>
+        </dl>
+        <p class="cert-thanks">
+          Thank you for completing user acceptance testing and helping make Bolt
+          Food better for merchants and teams.
+        </p>
+        <div class="cert-foot">
+          <div class="cert-sign">UAT Coordinator<br />Bolt Food Salesforce</div>
+          <div class="cert-sign cert-sign-right" id="certFootDate"></div>
+        </div>
+      </article>
+    </div>
+
     <script type="module" src="./app.js"></script>
   </body>
 </html>
