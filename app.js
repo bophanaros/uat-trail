@@ -501,18 +501,23 @@ function launchFireworks() {
   canvas.classList.add('active');
 
   if (reduceMotion) {
-    ctx.fillStyle = 'rgba(52, 187, 120, 0.35)';
-    ctx.fillRect(0, 0, w, h);
+    // Tiny sparkles only — keep the page fully visible
+    for (let i = 0; i < 24; i += 1) {
+      ctx.fillStyle = FIREWORK_COLORS[i % FIREWORK_COLORS.length];
+      ctx.beginPath();
+      ctx.arc(w * Math.random(), h * (0.15 + Math.random() * 0.5), 2 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     setTimeout(() => {
       ctx.clearRect(0, 0, w, h);
       canvas.classList.remove('active');
-    }, 400);
+    }, 450);
     return;
   }
 
   const rockets = [];
   const particles = [];
-  const rocketCount = 7;
+  const rocketCount = 6;
   for (let i = 0; i < rocketCount; i += 1) {
     rockets.push({
       x: w * (0.12 + Math.random() * 0.76),
@@ -526,30 +531,30 @@ function launchFireworks() {
   }
 
   const explode = (x, y, color) => {
-    const count = 70 + Math.floor(Math.random() * 40);
+    const count = 55 + Math.floor(Math.random() * 30);
     for (let i = 0; i < count; i += 1) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 7;
+      const speed = 2 + Math.random() * 6.5;
       particles.push({
         x,
         y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 1,
-        decay: 0.008 + Math.random() * 0.012,
-        size: 2.2 + Math.random() * 3.2,
+        decay: 0.01 + Math.random() * 0.014,
+        size: 2 + Math.random() * 2.8,
         color: Math.random() > 0.3 ? color : FIREWORK_COLORS[Math.floor(Math.random() * FIREWORK_COLORS.length)],
       });
     }
   };
 
   const started = performance.now();
-  const duration = 3200;
+  const duration = 2800;
 
   const tick = (now) => {
     const elapsed = now - started;
-    ctx.fillStyle = 'rgba(251, 253, 252, 0.18)';
-    ctx.fillRect(0, 0, w, h);
+    // Transparent clear — page stays visible underneath
+    ctx.clearRect(0, 0, w, h);
 
     for (const rocket of rockets) {
       if (elapsed < rocket.delay || rocket.exploded) continue;
@@ -558,8 +563,7 @@ function launchFireworks() {
       ctx.beginPath();
       ctx.arc(rocket.x, rocket.y, 3.2, 0, Math.PI * 2);
       ctx.fill();
-      // trail
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = 0.4;
       ctx.beginPath();
       ctx.arc(rocket.x, rocket.y + 8, 2, 0, Math.PI * 2);
       ctx.fill();
