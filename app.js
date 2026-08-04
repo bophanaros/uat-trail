@@ -138,8 +138,9 @@ function missionStatus(epicId, missionId) {
 
   const results = state.stepResults[resultKey(epicId, missionId)] || {};
   const outcomes = mission.steps.map((_, index) => results[String(index)]?.outcome);
-  if (outcomes.includes('Fail')) return 'Fail';
-  if (outcomes.every((outcome) => outcome === 'Pass')) return 'Pass';
+  const allAssessed = outcomes.every((outcome) => outcome === 'Pass' || outcome === 'Fail');
+  if (allAssessed && outcomes.includes('Fail')) return 'Fail';
+  if (allAssessed) return 'Pass';
   if (outcomes.some(Boolean)) return 'In Progress';
   return 'Pending';
 }
@@ -183,7 +184,7 @@ function allStepsAssessed(epic) {
 
 function statusBadge(outcome) {
   if (outcome === 'Pass') return { label: 'Pass', className: 'badge-pass' };
-  if (outcome === 'Fail') return { label: 'Fail', className: 'badge-fail' };
+  if (outcome === 'Fail') return { label: 'Completed · bug found', className: 'badge-fail' };
   if (outcome === 'In Progress') return { label: 'In progress', className: 'badge-progress' };
   return { label: 'Pending', className: 'badge-pending' };
 }
@@ -201,7 +202,7 @@ function renderSegBar(progress) {
     </div>
     <div class="seg-legend">
       <span><i style="background:var(--pass)"></i>${passed} pass</span>
-      <span><i style="background:var(--fail)"></i>${failed} fail</span>
+      <span><i style="background:var(--fail)"></i>${failed} bug found</span>
       <span><i style="background:var(--warn-soft)"></i>${inProgress} active</span>
       <span><i style="background:rgba(107,101,88,0.35)"></i>${pending} pending</span>
     </div>
@@ -497,7 +498,9 @@ function renderMission(epic, mission) {
           <div class="mission-status-summary">
             <span class="badge ${outcomeBadge.className}">${escapeHtml(outcomeBadge.label)}</span>
             <strong>${stepProgress.answered} of ${stepProgress.total} steps assessed</strong>
-            <span>${stepProgress.passed} passed · ${stepProgress.failed} failed</span>
+            <span>${stepProgress.passed} passed · ${stepProgress.failed} issue${
+              stepProgress.failed === 1 ? '' : 's'
+            } found</span>
           </div>
           <form class="form" id="resultForm">
             <label>
@@ -550,7 +553,7 @@ function setStepOutcome(epic, mission, stepIndex, outcome) {
     );
   } else if (outcome === 'Fail') {
     celebrateFail();
-    showToast('Bug caught — add a note to this step');
+    showToast('Great catch — add a note to help the team investigate');
   } else {
     showToast('Step passed — nice work!');
     if (previousStepOutcome !== 'Pass') launchConfetti();
