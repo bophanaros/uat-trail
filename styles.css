@@ -668,6 +668,106 @@ textarea {
   opacity: 1;
 }
 
+body.shake {
+  animation: screen-shake 0.45s ease-out;
+}
+
+@keyframes screen-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-4px, 2px);
+  }
+  40% {
+    transform: translate(4px, -3px);
+  }
+  60% {
+    transform: translate(-3px, -1px);
+  }
+  80% {
+    transform: translate(3px, 2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.shake {
+    animation: none;
+  }
+}
+
+.catch-chip {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  z-index: 10000;
+  display: grid;
+  gap: 0.2rem;
+  min-width: min(92vw, 360px);
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(196, 92, 38, 0.35);
+  background: #fff8f3;
+  color: var(--ink);
+  box-shadow: 0 12px 32px rgba(196, 92, 38, 0.18);
+  transform: translate(-50%, -12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.catch-chip.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.catch-chip strong {
+  font-size: 0.95rem;
+  color: #a8431a;
+}
+
+.catch-chip span {
+  font-size: 0.86rem;
+  color: var(--bolt-muted);
+  font-weight: 500;
+}
+
+.hunter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(196, 92, 38, 0.12);
+  color: #a8431a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.hunter-badge.pulse {
+  animation: hunter-pulse 0.55s ease;
+}
+
+@keyframes hunter-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+label.notes-hunt textarea,
+textarea.notes-hunt {
+  border-color: rgba(196, 92, 38, 0.55);
+  box-shadow: 0 0 0 3px rgba(196, 92, 38, 0.16);
+  background: #fffaf6;
+}
+
 .toast {
   position: fixed;
   right: 1rem;

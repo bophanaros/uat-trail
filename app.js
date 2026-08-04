@@ -2,12 +2,22 @@ const STORAGE_KEY = 'uat-trail-results-v1';
 const TESTER_KEY = 'uat-trail-tester-v1';
 const CHECKLIST_KEY = 'uat-trail-checklist-v1';
 
+const CATCH_LINES = [
+  'You found the glitch in the matrix',
+  'Boss fight unlocked — note what broke',
+  'Detective mode: on',
+  'Bug spotted. Evidence time.',
+  'Nice eyes — write it down before it escapes',
+  'Quest continues: capture expected vs actual',
+];
+
 const state = {
   catalog: null,
   selectedEpicId: null,
   selectedMissionId: null,
   results: loadResults(),
   checklists: loadChecklists(),
+  pendingNotesFocus: false,
 };
 
 const els = {
@@ -18,6 +28,9 @@ const els = {
   clearBtn: document.getElementById('clearBtn'),
   toast: document.getElementById('toast'),
   fireworks: document.getElementById('fireworks'),
+  catchChip: document.getElementById('catchChip'),
+  catchLine: document.getElementById('catchLine'),
+  hunterBadge: document.getElementById('hunterBadge'),
 };
 
 els.testerName.value = localStorage.getItem(TESTER_KEY) || '';
@@ -140,6 +153,11 @@ function doneWhenItems(doneWhen) {
 function render() {
   renderEpics();
   renderDetail();
+  updateHunterBadge();
+  if (state.pendingNotesFocus) {
+    state.pendingNotesFocus = false;
+    focusNotesForHunt();
+  }
 }
 
 function renderEpics() {
@@ -292,6 +310,7 @@ function wireMissionForm(epic, mission) {
       });
       btn.setAttribute('aria-pressed', 'true');
       if (btn.dataset.outcome === 'Pass') launchFireworks();
+      if (btn.dataset.outcome === 'Fail') celebrateFail({ focusNotes: true });
     });
   });
 
@@ -372,7 +391,11 @@ function renderMission(epic, mission) {
             </label>
             <label>
               Notes
-              <textarea name="notes" placeholder="What you saw, evidence, blockers…">${escapeHtml(existing.notes || '')}</textarea>
+              <textarea name="notes" placeholder="${
+                outcome === 'Fail'
+                  ? 'What did you see? Steps + expected vs actual…'
+                  : 'What you saw, evidence, blockers…'
+              }">${escapeHtml(existing.notes || '')}</textarea>
             </label>
             <label>
               Evidence URL
@@ -406,8 +429,16 @@ function quickSetOutcome(epicId, missionId, outcome, toastAndRender) {
   };
   saveResults();
   if (outcome === 'Pass') launchFireworks();
+  if (outcome === 'Fail') {
+    if (!prev.feedbackType || prev.feedbackType === 'None') {
+      state.results[resultKey(epicId, missionId)].feedbackType = 'Broken';
+      saveResults();
+    }
+    state.pendingNotesFocus = true;
+    celebrateFail();
+  }
   if (toastAndRender) {
-    showToast(`${outcome} saved`);
+    showToast(outcome === 'Fail' ? 'Bug caught!' : `${outcome} saved`);
     render();
   }
 }
@@ -416,20 +447,26 @@ function submitResult(epicId, missionId, formData) {
   const tester = els.testerName.value.trim() || 'anonymous';
   localStorage.setItem(TESTER_KEY, tester);
   const outcome = formData.get('outcome');
+  let feedbackType = formData.get('feedbackType') || 'None';
+  if (outcome === 'Fail' && feedbackType === 'None') feedbackType = 'Broken';
 
   state.results[resultKey(epicId, missionId)] = {
     epicId,
     missionId,
     tester,
     outcome,
-    feedbackType: formData.get('feedbackType') || 'None',
+    feedbackType,
     notes: String(formData.get('notes') || '').trim(),
     evidenceUrl: String(formData.get('evidenceUrl') || '').trim(),
     submittedAt: new Date().toISOString(),
   };
   saveResults();
   if (outcome === 'Pass') launchFireworks();
-  showToast('Result saved');
+  if (outcome === 'Fail') {
+    state.pendingNotesFocus = true;
+    celebrateFail();
+  }
+  showToast(outcome === 'Fail' ? 'Bug caught!' : 'Result saved');
   render();
 }
 
@@ -475,6 +512,149 @@ function showToast(message) {
   els.toast.classList.add('show');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => els.toast.classList.remove('show'), 1800);
+}
+
+function failCountForEpic(epicId) {
+  if (!epicId) return 0;
+  const tester = (els.testerName.value || 'anonymous').trim().toLowerCase();
+  const prefix = `${tester}::${epicId}::`;
+  let count = 0;
+  for (const [key, result] of Object.entries(state.results)) {
+    if (key.startsWith(prefix) && result.outcome === 'Fail') count += 1;
+  }
+  return count;
+}
+
+function updateHunterBadge() {
+  const badge = els.hunterBadge;
+  if (!badge) return;
+  const count = failCountForEpic(state.selectedEpicId);
+  if (!count) {
+    badge.hidden = true;
+    return;
+  }
+  badge.hidden = false;
+  badge.textContent = count === 1 ? 'Bug hunter · 1 find' : `Bug hunter · ${count} finds`;
+}
+
+function focusNotesForHunt() {
+  const notes = els.epicDetail.querySelector('textarea[name="notes"]');
+  if (!notes) return;
+  const feedback = els.epicDetail.querySelector('select[name="feedbackType"]');
+  if (feedback && feedback.value === 'None') feedback.value = 'Broken';
+  notes.placeholder = 'What did you see? Steps + expected vs actual…';
+  notes.classList.add('notes-hunt');
+  notes.focus();
+  notes.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  clearTimeout(focusNotesForHunt._t);
+  focusNotesForHunt._t = setTimeout(() => notes.classList.remove('notes-hunt'), 2600);
+}
+
+function celebrateFail({ focusNotes = false } = {}) {
+  shakeScreen();
+  launchBugBurst();
+  showCatchChip();
+  updateHunterBadge();
+  requestAnimationFrame(() => {
+    els.hunterBadge?.classList.remove('pulse');
+    void els.hunterBadge?.offsetWidth;
+    els.hunterBadge?.classList.add('pulse');
+  });
+  if (focusNotes) focusNotesForHunt();
+}
+
+function shakeScreen() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+  clearTimeout(shakeScreen._t);
+  shakeScreen._t = setTimeout(() => document.body.classList.remove('shake'), 500);
+}
+
+function showCatchChip() {
+  if (!els.catchChip || !els.catchLine) return;
+  const line = CATCH_LINES[Math.floor(Math.random() * CATCH_LINES.length)];
+  els.catchLine.textContent = line;
+  els.catchChip.hidden = false;
+  els.catchChip.classList.add('show');
+  clearTimeout(showCatchChip._t);
+  showCatchChip._t = setTimeout(() => {
+    els.catchChip.classList.remove('show');
+    setTimeout(() => {
+      els.catchChip.hidden = true;
+    }, 220);
+  }, 2800);
+}
+
+const BUG_BURST_COLORS = ['#c45c26', '#e0a800', '#c73a2e', '#ff8a5b', '#ffffff'];
+
+function launchBugBurst() {
+  const canvas = document.getElementById('fireworks') || els.fireworks;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  cancelAnimationFrame(fireworksRaf);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.classList.add('active');
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const originX = w * 0.5;
+  const originY = h * 0.38;
+  const particles = [];
+  const count = reduceMotion ? 18 : 48;
+  for (let i = 0; i < count; i += 1) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 5;
+    particles.push({
+      x: originX,
+      y: originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      decay: 0.016 + Math.random() * 0.02,
+      size: 2 + Math.random() * 2.6,
+      color: BUG_BURST_COLORS[i % BUG_BURST_COLORS.length],
+    });
+  }
+
+  const started = performance.now();
+  const duration = reduceMotion ? 700 : 1400;
+
+  const tick = (now) => {
+    const elapsed = now - started;
+    ctx.clearRect(0, 0, w, h);
+    for (const p of particles) {
+      if (p.life <= 0) continue;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.06;
+      p.vx *= 0.98;
+      p.life -= p.decay;
+      ctx.globalAlpha = Math.max(p.life, 0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (elapsed < duration) {
+      fireworksRaf = requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0, 0, w, h);
+      canvas.classList.remove('active');
+    }
+  };
+
+  fireworksRaf = requestAnimationFrame(tick);
 }
 
 const FIREWORK_COLORS = ['#34bb78', '#18784c', '#e0a800', '#ffffff', '#7ee0a8', '#ff6b4a', '#5ad4ff'];
