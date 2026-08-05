@@ -42,7 +42,7 @@ const els = {
   certFootDate: document.getElementById('certFootDate'),
   certSheet: document.getElementById('certSheet'),
   certKicker: document.getElementById('certKicker'),
-  certPrintBtn: document.getElementById('certPrintBtn'),
+  certDownloadBtn: document.getElementById('certDownloadBtn'),
   certCloseBtn: document.getElementById('certCloseBtn'),
   tokenPop: document.getElementById('tokenPop'),
   tokenPopAmount: document.getElementById('tokenPopAmount'),
@@ -59,7 +59,7 @@ els.testerName.addEventListener('change', () => {
 
 els.submitBtn?.addEventListener('click', () => submitResults());
 els.clearBtn.addEventListener('click', clearMyResults);
-els.certPrintBtn?.addEventListener('click', () => window.print());
+els.certDownloadBtn?.addEventListener('click', downloadCertificate);
 els.certCloseBtn?.addEventListener('click', closeCertificate);
 els.certificateModal?.addEventListener('click', (event) => {
   if (event.target === els.certificateModal) closeCertificate();
@@ -263,7 +263,7 @@ function renderRewardPanel(epic) {
       : reward.tier === 'Gold'
         ? `<div class="reward-actions">
             <button class="btn reward-submit-btn" id="finishSubmitBtn" type="button">Submit results</button>
-            <button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">Print Gold certificate</button>
+            <button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">Download Gold certificate</button>
           </div>`
         : `<button class="btn btn-secondary reward-cert-btn" id="rewardCertificateBtn" type="button">View ${reward.tier} certificate</button>`;
 
@@ -642,7 +642,7 @@ function setStepOutcome(epic, mission, stepIndex, outcome) {
   if (trailJustCompleted) {
     launchFireworks();
     showToast(
-      'Thank you for completing UAT! Your certificate is ready — use Print certificate at the top.',
+      'Thank you for completing UAT! Your certificate is ready — use Download certificate at the top.',
       6500
     );
   } else if (outcome === 'Fail') {
@@ -892,7 +892,198 @@ function openCertificate(epic) {
 
   els.certificateModal.hidden = false;
   document.body.classList.add('cert-open');
-  els.certPrintBtn?.focus();
+  els.certDownloadBtn?.focus();
+}
+
+function canvasRoundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawWrappedText(ctx, text, centerX, startY, maxWidth, lineHeight) {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const candidate = line ? line + ' ' + word : word;
+    if (ctx.measureText(candidate).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  lines.forEach((item, index) => ctx.fillText(item, centerX, startY + index * lineHeight));
+  return startY + lines.length * lineHeight;
+}
+
+function certificatePalette(tier) {
+  if (tier === 'Gold') {
+    return { accent: '#b68100', tint: '#fff2bd', pill: '#7d5700', wash: '#fff9dc' };
+  }
+  if (tier === 'Silver') {
+    return { accent: '#717d83', tint: '#e8eef0', pill: '#505b61', wash: '#f2f6f7' };
+  }
+  return { accent: '#a75f31', tint: '#f5d8c4', pill: '#88491f', wash: '#fff4ec' };
+}
+
+function downloadCertificate() {
+  if (!els.certDownloadBtn || !els.certSheet) return;
+  const previousLabel = els.certDownloadBtn.textContent;
+  els.certDownloadBtn.disabled = true;
+  els.certDownloadBtn.textContent = 'Preparing download…';
+
+  try {
+    const tier = (els.certKicker.textContent || 'Bronze').split(/\s+/)[0];
+    const palette = certificatePalette(tier);
+    const tester = els.certTesterName.textContent || 'UAT Tester';
+    const feature = els.certFeatureName.textContent || 'UAT Feature';
+    const date = els.certFootDate.textContent || '';
+    const canvas = document.createElement('canvas');
+    canvas.width = 1800;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas is unavailable');
+
+    const background = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    background.addColorStop(0, palette.wash);
+    background.addColorStop(0.52, '#fffdf8');
+    background.addColorStop(1, palette.tint);
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    const character = els.certSheet.querySelector('.cert-character');
+    if (character?.complete && character.naturalWidth) {
+      ctx.globalAlpha = 0.09;
+      ctx.drawImage(character, 1340, 610, 500, 500 * (character.naturalHeight / character.naturalWidth));
+    }
+    ctx.restore();
+
+    canvasRoundedRect(ctx, 42, 42, 1716, 996, 34);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = palette.accent;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.setLineDash([14, 11]);
+    canvasRoundedRect(ctx, 72, 72, 1656, 936, 24);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = palette.accent;
+    ctx.globalAlpha = 0.62;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#3d806f';
+    ctx.font = '800 42px Inter, Arial, sans-serif';
+    ctx.fillText('Bolt Food', 900, 150);
+    ctx.font = '800 18px Inter, Arial, sans-serif';
+    ctx.fillText('UAT TRAIL', 900, 182);
+
+    ctx.font = '800 19px Inter, Arial, sans-serif';
+    const kicker = tier.toUpperCase() + ' UAT TRAILBLAZER';
+    const kickerWidth = ctx.measureText(kicker).width + 54;
+    canvasRoundedRect(ctx, 900 - kickerWidth / 2, 214, kickerWidth, 44, 22);
+    ctx.fillStyle = palette.pill;
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(kicker, 900, 244);
+
+    ctx.fillStyle = '#123b33';
+    ctx.font = '800 66px Inter, Arial, sans-serif';
+    ctx.fillText('Certificate of Appreciation', 900, 345);
+
+    ctx.fillStyle = '#40564f';
+    ctx.font = '500 28px Inter, Arial, sans-serif';
+    ctx.fillText('Presented to', 900, 415);
+
+    ctx.fillStyle = '#17332d';
+    ctx.font = '800 76px Inter, Arial, sans-serif';
+    ctx.fillText(tester, 900, 510);
+
+    ctx.font = '800 17px Inter, Arial, sans-serif';
+    const featureLabelWidth = Math.min(Math.max(ctx.measureText(feature).width + 100, 430), 980);
+    canvasRoundedRect(ctx, 900 - featureLabelWidth / 2, 555, featureLabelWidth, 92, 20);
+    ctx.fillStyle = 'rgba(91, 166, 181, 0.13)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(61, 128, 111, 0.35)';
+    ctx.stroke();
+    ctx.fillStyle = '#255e51';
+    ctx.fillText('FEATURE', 900, 585);
+    ctx.fillStyle = '#17332d';
+    ctx.font = '700 28px Inter, Arial, sans-serif';
+    ctx.fillText(feature, 900, 624);
+
+    ctx.fillStyle = '#40564f';
+    ctx.font = '500 27px Inter, Arial, sans-serif';
+    drawWrappedText(
+      ctx,
+      'In recognition of your contribution to user acceptance testing. Your time, insights, and attention to detail helped validate real-world workflows and shape a better product for our teams and merchants.',
+      900,
+      720,
+      1120,
+      42
+    );
+
+    ctx.beginPath();
+    ctx.moveTo(130, 905);
+    ctx.lineTo(1670, 905);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(18, 59, 51, 0.2)';
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#17332d';
+    ctx.font = '800 24px Inter, Arial, sans-serif';
+    ctx.fillText('Commercial Enablement Team', 140, 954);
+    ctx.fillStyle = '#40564f';
+    ctx.font = '600 20px Inter, Arial, sans-serif';
+    ctx.fillText('Bolt Food', 140, 986);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(date, 1660, 977);
+
+    const safeName = tester
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'tester';
+    const filename = 'uat-trail-certificate-' + safeName + '-' + tier.toLowerCase() + '.png';
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showToast('Could not create the certificate download');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('Certificate downloaded as a landscape PNG');
+    }, 'image/png');
+  } catch (error) {
+    console.warn('Certificate download failed', error);
+    showToast('Could not download the certificate');
+  } finally {
+    els.certDownloadBtn.disabled = false;
+    els.certDownloadBtn.textContent = previousLabel;
+  }
 }
 
 function closeCertificate() {
