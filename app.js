@@ -1014,8 +1014,15 @@ function downloadCertificate() {
     ctx.font = '800 76px Inter, Arial, sans-serif';
     ctx.fillText(tester, 900, 510);
 
-    ctx.font = '800 17px Inter, Arial, sans-serif';
-    const featureLabelWidth = Math.min(Math.max(ctx.measureText(feature).width + 100, 430), 980);
+    const featureMaxTextWidth = 1000;
+    let featureFontSize = 28;
+    ctx.font = `700 ${featureFontSize}px Inter, Arial, sans-serif`;
+    while (ctx.measureText(feature).width > featureMaxTextWidth && featureFontSize > 18) {
+      featureFontSize -= 1;
+      ctx.font = `700 ${featureFontSize}px Inter, Arial, sans-serif`;
+    }
+    const featureTextWidth = Math.min(ctx.measureText(feature).width, featureMaxTextWidth);
+    const featureLabelWidth = Math.min(Math.max(featureTextWidth + 100, 430), 1100);
     canvasRoundedRect(ctx, 900 - featureLabelWidth / 2, 555, featureLabelWidth, 92, 20);
     ctx.fillStyle = 'rgba(91, 166, 181, 0.13)';
     ctx.fill();
@@ -1023,9 +1030,10 @@ function downloadCertificate() {
     ctx.strokeStyle = 'rgba(61, 128, 111, 0.35)';
     ctx.stroke();
     ctx.fillStyle = '#255e51';
+    ctx.font = '800 17px Inter, Arial, sans-serif';
     ctx.fillText('FEATURE', 900, 585);
     ctx.fillStyle = '#17332d';
-    ctx.font = '700 28px Inter, Arial, sans-serif';
+    ctx.font = `700 ${featureFontSize}px Inter, Arial, sans-serif`;
     ctx.fillText(feature, 900, 624);
 
     ctx.fillStyle = '#40564f';
